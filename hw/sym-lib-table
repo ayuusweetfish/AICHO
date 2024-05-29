@@ -1,5 +1,6 @@
 (sym_lib_table
   (version 7)
-  (lib (name "W25Q128JVPIQ")(type "KiCad")(uri "${KIPRJMOD}/W25Q128JVPIQ/W25Q128JVPIQ.kicad_sym")(options "")(descr ""))
+  (lib (name "W25Q128JVPIQ")(type "KiCad")(uri "${KIPRJMOD}/libs/W25Q128JVPIQ/W25Q128JVPIQ.kicad_sym")(options "")(descr ""))
   (lib (name "AICHO_symbols")(type "KiCad")(uri "${KIPRJMOD}/AICHO_symbols.kicad_sym")(options "")(descr ""))
+  (lib (name "MAX98357AETE+")(type "KiCad")(uri "${KIPRJMOD}/libs/MAX98357AETE+/MAX98357AETE+.kicad_sym")(options "")(descr ""))
 )

@@ -1,4 +1,6 @@
 (fp_lib_table
   (version 7)
-  (lib (name "W25Q128JVPIQ")(type "KiCad")(uri "${KIPRJMOD}/W25Q128JVPIQ/W25Q128JVPIQ.pretty")(options "")(descr ""))
+  (lib (name "W25Q128JVPIQ")(type "KiCad")(uri "${KIPRJMOD}/libs/W25Q128JVPIQ/W25Q128JVPIQ.pretty")(options "")(descr ""))
+  (lib (name "MAX98357AETE+")(type "KiCad")(uri "${KIPRJMOD}/libs/MAX98357AETE+/MAX98357AETE+.pretty")(options "")(descr ""))
+  (lib (name "AICHO_footprints")(type "KiCad")(uri "${KIPRJMOD}/AICHO_footprints.pretty")(options "")(descr ""))
 )

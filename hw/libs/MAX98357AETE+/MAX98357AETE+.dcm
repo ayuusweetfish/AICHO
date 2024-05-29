@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP MAX98357AETE+
+D MAXIM INTEGRATED PRODUCTS - MAX98357AETE+ - AMPLIFIER, CLASS-D, 1-CH, 3.2W, TQFN-16
+K
+F https://datasheets.maximintegrated.com/en/ds/MAX98357A-MAX98357B.pdf
+$ENDCMP
+#
+#End Doc Library
