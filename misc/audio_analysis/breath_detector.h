@@ -143,6 +143,14 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
         (uint64_t)bins[20] * 10000 / (sum_mid + 1) >= 25 &&
         (uint64_t)bins[40] * 10000 / (sum_mid + 1) >= 5;
 
+      static int count = 0;
+      if (pred && count < 4) count++;
+      else if (!pred && count > 0) count--;
+      static bool last_out = false;
+      if (!last_out && count >= 3) last_out = true;
+      else if (last_out && count < 2) last_out = false;
+      bool out = last_out;
+
       // printf(" %d", sum_hi >= 150);
       bool gt =
         (T >= 6.4 && T < 7.8) ||
@@ -155,8 +163,8 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
         (T >= 44.93 && T < 45.91) ||
         (T >= 49.98 && T < 51.32) ||
         (T >= 55.15 && T < 56.97);
-      printf(" GT=%d Pred=%d\n", gt, pred);
-      confusion[(int)gt][(int)pred] += 1;
+      printf(" GT=%d Pred=%d Hy.Out=%d\n", gt, pred, out);
+      confusion[(int)gt][(int)out] += 1;
 
       d->buf_ptr = 0;
     }
