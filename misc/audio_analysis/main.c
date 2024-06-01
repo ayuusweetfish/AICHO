@@ -1,6 +1,6 @@
 // gcc -O2 -DMINIAUDIO_IMPLEMENTATION -c -x c miniaudio.h
-// make KISSFFT_DATATYPE=int16_t KISSFFT_STATIC=1
-// gcc -std=c99 main.c miniaudio.o -Ikissfft-131.1.0 kissfft-131.1.0/libkissfft-int16_t.a
+// make KISSFFT_DATATYPE=int32_t KISSFFT_STATIC=1
+// gcc -std=c99 main.c miniaudio.o -Ikissfft-131.1.0 kissfft-131.1.0/libkissfft-int32_t.a
 
 #include "miniaudio.h"  // miniaudio - v0.11.21 (4a5b74b)
 

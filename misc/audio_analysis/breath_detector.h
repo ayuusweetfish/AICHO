@@ -1,6 +1,6 @@
 #pragma once
 
-#define FIXED_POINT 16
+#define FIXED_POINT 32
 #include "kiss_fftr.h"  // kiss_fft-131.1.0
 
 #include <stdbool.h>
@@ -8,7 +8,7 @@
 
 #define BREATH_DET_WINDOW_SIZE 2048
 struct breath_detector {
-  int16_t buf[BREATH_DET_WINDOW_SIZE];
+  int32_t buf[BREATH_DET_WINDOW_SIZE];
   uint32_t buf_ptr;
 
   bool is_exhale;
@@ -28,6 +28,9 @@ static int int32_compare_desc(const void *a, const void *b)
 
 static void breath_detector_feed(struct breath_detector *restrict d, const int16_t *restrict a, uint32_t n)
 {
+  static int confusion[2][2] = {{ 0 }};
+  static int count = 0; // XXX: Not suitable for multiple instances but anyway
+
   uint32_t i = 0;
   while (i < n) {
     uint32_t limit = i + BREATH_DET_WINDOW_SIZE - d->buf_ptr;
@@ -50,7 +53,7 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
       }
 
       for (uint32_t i = 0; i < BREATH_DET_WINDOW_SIZE; i++) {
-        d->buf[i] = (int32_t)d->buf[i] * hann_window[i] / 32768;
+        d->buf[i] = (int32_t)d->buf[i] * hann_window[i] / 32768 * 256;
       }
 
       kiss_fftr(fft_cfg, d->buf, fft_result);
@@ -59,7 +62,6 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
 
       #define cplx_norm2(_x) ((int32_t)(_x).r * (_x).r + (int32_t)(_x).i * (_x).i)
 
-      static int count = 0; // XXX: Not suitable for multiple instances but anyway
       if (count % 100 == 0) {
         printf("              |");
         for (uint32_t i = 1, bin_size; i <= BREATH_DET_WINDOW_SIZE / 2; i += bin_size) {
@@ -82,11 +84,11 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
         }
         // putchar(sum >= 500 ? '*' : sum >= 100 ? '+' : sum >= 50 ? '.' : ' ');
       }
-      for (int i = 280; i < 640; i++) {
-        int32_t e = cplx_norm2(fft_result[i]);
+      /* for (int i = 280; i < 640; i++) {
+        int32_t e = cplx_norm2(fft_result[i]) / 256;
         e = min(10, e);
         putchar(e == 0 ? ' ' : '0' + e);
-      }
+      } */
       putchar('|');
 
       int32_t energy_total = 0;
@@ -99,12 +101,10 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
           (int32_t)fft_result[j].r * fft_result[j].r + 
           (int32_t)fft_result[j].i * fft_result[j].i;
       int32_t sum_mid = 0;
-      for (uint32_t j = 200; j <= 300; j++)
-        sum_mid +=
-          (int32_t)fft_result[j].r * fft_result[j].r + 
-          (int32_t)fft_result[j].i * fft_result[j].i;
+      for (uint32_t j = 100; j <= 280; j++)
+        sum_mid += cplx_norm2(fft_result[j]);
       int32_t sum_hi = 0;
-      for (uint32_t j = 512; j <= 1024; j++)
+      for (uint32_t j = 280; j < 640; j++)
         sum_hi += cplx_norm2(fft_result[j]);
 
       if (false && count == 152) {
@@ -129,14 +129,22 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
       // printf(" %d %d %4d %4d %4d\n", sum_lo >= 5000, sum_hi >= 200, (int)bins[5], (int)bins[10], (int)bins[60]);
       // printf(" %d %d %d %d\n", sum_lo >= 5000, sum_hi >= 200, bins[20] >= 30, bins[40] >= 15); // for non-binned
       printf(" %4d %4d %3d %3d %3d",
-        min(sum_mid / 100, 9999), min(sum_hi, 9999),
-        min(999, bins[5]), min(999, bins[10]), min(999, bins[20]));
+        min(sum_mid / 100 / 256, 9999), min(sum_hi / 360 / 256, 9999),
+        min(999, bins[5] / 256), min(999, bins[10] / 256), min(999, bins[20] / 256));
+      printf(" / %4d", (int)((uint64_t)bins[40] * 10000 / (sum_mid + 1)));
 
       // printf(" %6d", sum_hi * 10000 / (energy_total == 0 ? 1 : energy_total));
       // printf(" %6d", sum_hi * 10000 / (energy_total == 0 ? 1 : energy_total) >= 500);
 
+      bool pred =
+        // (bins[10] / 256) >= 100;
+        bins[20] / 256 >= 20 &&
+        (uint64_t)bins[10] * 10000 / (sum_mid + 1) >= 50 &&
+        (uint64_t)bins[20] * 10000 / (sum_mid + 1) >= 25 &&
+        (uint64_t)bins[40] * 10000 / (sum_mid + 1) >= 5;
+
       // printf(" %d", sum_hi >= 150);
-      printf(" GT=%d\n",
+      bool gt =
         (T >= 6.4 && T < 7.8) ||
         (T >= 14.9 && T < 16.0) ||
         (T >= 20.64 && T < 21.74) ||
@@ -146,11 +154,19 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
         (T >= 40.93 && T < 42.8) ||
         (T >= 44.93 && T < 45.91) ||
         (T >= 49.98 && T < 51.32) ||
-        (T >= 55.15 && T < 56.97)
-      );
+        (T >= 55.15 && T < 56.97);
+      printf(" GT=%d Pred=%d\n", gt, pred);
+      confusion[(int)gt][(int)pred] += 1;
 
       d->buf_ptr = 0;
     }
+  }
+
+  if (count == 1349) {
+    printf("GT\\Pred\n");
+    printf("  %5d %5d\n  %5d %5d\n",
+      confusion[0][0], confusion[0][1],
+      confusion[1][0], confusion[1][1]);
   }
 }
 
