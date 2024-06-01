@@ -4,114 +4,9 @@
 
 #include "miniaudio.h"  // miniaudio - v0.11.21 (4a5b74b)
 
-#define FIXED_POINT 16
-#include "kiss_fftr.h"  // kiss_fft-131.1.0
+#include "breath_detector.h"
 
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
-
-#define BREATH_DET_WINDOW_SIZE 2048
-struct breath_detector {
-  int16_t buf[BREATH_DET_WINDOW_SIZE];
-  uint32_t buf_ptr;
-
-  bool is_exhale;
-};
-
-static void breath_detector_init(struct breath_detector *d)
-{
-  d->buf_ptr = 0;
-  d->is_exhale = false;
-}
-
-#define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
-static int int32_compare(const void *a, const void *b)
-{
-  return *(const int32_t *)b - *(const int32_t *)a;
-}
-
-static void breath_detector_feed(struct breath_detector *restrict d, const int16_t *restrict a, uint32_t n)
-{
-  uint32_t i = 0;
-  while (i < n) {
-    uint32_t limit = BREATH_DET_WINDOW_SIZE - d->buf_ptr;
-    if (limit > n) limit = n;
-    while (i < limit) d->buf[d->buf_ptr++] = a[i++];
-
-    if (d->buf_ptr == BREATH_DET_WINDOW_SIZE) {
-      // Analyse
-      static kiss_fftr_cfg fft_cfg;
-      static kiss_fft_cpx fft_result[BREATH_DET_WINDOW_SIZE / 2 + 1];
-      static int16_t hann_window[BREATH_DET_WINDOW_SIZE];
-      static bool initialised = false;
-      if (!initialised) {
-        fft_cfg = kiss_fftr_alloc(BREATH_DET_WINDOW_SIZE, 0, NULL, NULL);
-        for (uint32_t i = 0; i < BREATH_DET_WINDOW_SIZE; i++) {
-          hann_window[i] = (int16_t)(32767.5f *
-            (0.5f * (1 - cosf((float)i / BREATH_DET_WINDOW_SIZE * (2 * (float)M_PI)))));
-        }
-        initialised = true;
-      }
-
-      for (uint32_t i = 0; i < BREATH_DET_WINDOW_SIZE; i++) {
-        d->buf[i] = (int32_t)d->buf[i] * hann_window[i] / 32768;
-      }
-
-      kiss_fftr(fft_cfg, d->buf, fft_result);
-      // 1024 = Nyquist = 24 kHz
-      // 1 = 23.4375 Hz
-      for (uint32_t i = 1; i <= 800; i += 8) {
-        int32_t sum = 0;
-        for (uint32_t j = i; j < i + 8; j++) {
-          sum += (int32_t)fft_result[j].r * fft_result[j].r + 
-                 (int32_t)fft_result[j].i * fft_result[j].i;
-        }
-        putchar(sum >= 500 ? '*' : (sum >= 100 ? '.' : ' '));
-      }
-      putchar('|');
-
-      int32_t sum_lo = 0;
-      for (uint32_t j = 1; j <= 32; j++)
-        sum_lo +=
-          (int32_t)fft_result[j].r * fft_result[j].r + 
-          (int32_t)fft_result[j].i * fft_result[j].i;
-      int32_t sum_mid = 0;
-      for (uint32_t j = 200; j <= 300; j++)
-        sum_mid +=
-          (int32_t)fft_result[j].r * fft_result[j].r + 
-          (int32_t)fft_result[j].i * fft_result[j].i;
-      int32_t sum_hi = 0;
-      for (uint32_t j = 512; j <= 1024; j++)
-        sum_hi +=
-          (int32_t)fft_result[j].r * fft_result[j].r + 
-          (int32_t)fft_result[j].i * fft_result[j].i;
-
-      static int32_t bins[BREATH_DET_WINDOW_SIZE / 2];
-      for (uint32_t i = 0; i < 120; i++) {
-        bins[i] = 0;
-        for (int j = i * 4 + 1; j <= i * 4 + 4; j++)
-          bins[i] =
-            (int32_t)fft_result[j].r * fft_result[j].r + 
-            (int32_t)fft_result[j].i * fft_result[j].i;
-      }
-      qsort(bins, 120, sizeof(int32_t), int32_compare);
-
-      // printf(" %4d %4d %4d\n", (int)min(sum_lo / 100, 9999), (int)min(sum_mid / 100, 9999), (int)sum_hi);
-      // printf(" %d %d %4d %4d %4d\n", sum_lo >= 5000, sum_hi >= 200, (int)bins[5], (int)bins[10], (int)bins[60]);
-      // printf(" %d %d %d %d\n", sum_lo >= 5000, sum_hi >= 200, bins[20] >= 30, bins[40] >= 15); // for non-binned
-      // printf(" %d %d %d %d %d %d\n", sum_lo >= 5000, sum_mid >= 1000, sum_hi >= 200, bins[5] >= 100, bins[20] >= 40, bins[60] >= 10);
-      printf(" %d\n", sum_hi >= 150);
-
-      d->buf_ptr = 0;
-    }
-  }
-}
-
-static bool breath_detector_is_exhale(const struct breath_detector *d)
-{
-  return d->is_exhale;
-}
 
 static struct breath_detector d;
 
@@ -123,7 +18,7 @@ void input_cb(ma_device* dev, void *_output, const void *_input, ma_uint32 n_fra
   (void)_output;
 }
 
-int main()
+int main_capture()
 {
   ma_context ctx;
   if (ma_context_init(NULL, 0, NULL, &ctx) != MA_SUCCESS) {
@@ -172,4 +67,36 @@ int main()
   getchar();
 
   return 0;
+}
+
+int main_file(const char *path)
+{
+  ma_decoder dec;
+  ma_decoder_config dec_cfg = ma_decoder_config_init(ma_format_s16, 1, 48000);
+
+  if (ma_decoder_init_file(path, &dec_cfg, &dec) != MA_SUCCESS) {
+    fprintf(stderr, "Cannot decode file %s\n", path);
+    return 1;
+  }
+
+  static int16_t a[16384];
+  static const int a_count = sizeof a / sizeof a[0];
+  ma_uint64 n_frames_read;
+  do {
+    if (ma_decoder_read_pcm_frames(&dec, a, a_count, &n_frames_read) != MA_SUCCESS) {
+      fprintf(stderr, "Error during decoding\n");
+      return 1;
+    }
+    breath_detector_feed(&d, a, n_frames_read);
+  } while (n_frames_read == a_count);
+
+  return 0;
+}
+
+int main(int argc, char *argv[])
+{
+  if (argc > 1) {
+    return main_file(argv[1]);
+  }
+  return main_capture();
 }
