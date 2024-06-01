@@ -25,6 +25,12 @@ static void breath_detector_init(struct breath_detector *d)
   d->is_exhale = false;
 }
 
+#define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
+static int int32_compare(const void *a, const void *b)
+{
+  return *(const int32_t *)b - *(const int32_t *)a;
+}
+
 static void breath_detector_feed(struct breath_detector *restrict d, const int16_t *restrict a, uint32_t n)
 {
   uint32_t i = 0;
@@ -55,7 +61,7 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
       kiss_fftr(fft_cfg, d->buf, fft_result);
       // 1024 = Nyquist = 24 kHz
       // 1 = 23.4375 Hz
-      for (uint32_t i = 1; i <= 1024; i += 8) {
+      for (uint32_t i = 1; i <= 800; i += 8) {
         int32_t sum = 0;
         for (uint32_t j = i; j < i + 8; j++) {
           sum += (int32_t)fft_result[j].r * fft_result[j].r + 
@@ -64,7 +70,38 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
         putchar(sum >= 500 ? '*' : (sum >= 100 ? '.' : ' '));
       }
       putchar('|');
-      putchar('\n');
+
+      int32_t sum_lo = 0;
+      for (uint32_t j = 1; j <= 32; j++)
+        sum_lo +=
+          (int32_t)fft_result[j].r * fft_result[j].r + 
+          (int32_t)fft_result[j].i * fft_result[j].i;
+      int32_t sum_mid = 0;
+      for (uint32_t j = 200; j <= 300; j++)
+        sum_mid +=
+          (int32_t)fft_result[j].r * fft_result[j].r + 
+          (int32_t)fft_result[j].i * fft_result[j].i;
+      int32_t sum_hi = 0;
+      for (uint32_t j = 512; j <= 1024; j++)
+        sum_hi +=
+          (int32_t)fft_result[j].r * fft_result[j].r + 
+          (int32_t)fft_result[j].i * fft_result[j].i;
+
+      static int32_t bins[BREATH_DET_WINDOW_SIZE / 2];
+      for (uint32_t i = 0; i < 120; i++) {
+        bins[i] = 0;
+        for (int j = i * 4 + 1; j <= i * 4 + 4; j++)
+          bins[i] =
+            (int32_t)fft_result[j].r * fft_result[j].r + 
+            (int32_t)fft_result[j].i * fft_result[j].i;
+      }
+      qsort(bins, 120, sizeof(int32_t), int32_compare);
+
+      // printf(" %4d %4d %4d\n", (int)min(sum_lo / 100, 9999), (int)min(sum_mid / 100, 9999), (int)sum_hi);
+      // printf(" %d %d %4d %4d %4d\n", sum_lo >= 5000, sum_hi >= 200, (int)bins[5], (int)bins[10], (int)bins[60]);
+      // printf(" %d %d %d %d\n", sum_lo >= 5000, sum_hi >= 200, bins[20] >= 30, bins[40] >= 15); // for non-binned
+      // printf(" %d %d %d %d %d %d\n", sum_lo >= 5000, sum_mid >= 1000, sum_hi >= 200, bins[5] >= 100, bins[20] >= 40, bins[60] >= 10);
+      printf(" %d\n", sum_hi >= 150);
 
       d->buf_ptr = 0;
     }
