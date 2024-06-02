@@ -78,10 +78,8 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
       for (uint32_t i = 1, bin_size; i <= BREATH_DET_WINDOW_SIZE / 2; i += bin_size) {
         bin_size = (i < 800 ? 8 : 16);
         int32_t sum = 0;
-        for (uint32_t j = i; j < i + 8; j++) {
-          sum += (int32_t)fft_result[j].r * fft_result[j].r + 
-                 (int32_t)fft_result[j].i * fft_result[j].i;
-        }
+        for (uint32_t j = i; j < i + 8; j++)
+          sum += cplx_norm2(fft_result[j]);
         // putchar(sum >= 500 ? '*' : sum >= 100 ? '+' : sum >= 50 ? '.' : ' ');
       }
       /* for (int i = 280; i < 640; i++) {
@@ -95,24 +93,19 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
       for (uint32_t j = 100; j <= BREATH_DET_WINDOW_SIZE / 2; j++)
         energy_total += cplx_norm2(fft_result[j]);
 
-      int32_t sum_lo = 0;
+      int64_t sum_lo = 0;
       for (uint32_t j = 1; j <= 32; j++)
-        sum_lo +=
-          (int32_t)fft_result[j].r * fft_result[j].r + 
-          (int32_t)fft_result[j].i * fft_result[j].i;
-      int32_t sum_mid = 0;
+        sum_lo += cplx_norm2(fft_result[j]);
+      int64_t sum_mid = 0;
       for (uint32_t j = 100; j <= 280; j++)
         sum_mid += cplx_norm2(fft_result[j]);
-      int32_t sum_hi = 0;
-      for (uint32_t j = 280; j < 640; j++)
+      int64_t sum_hi = 0;
+      for (uint32_t j = 640; j < 1024; j++)
         sum_hi += cplx_norm2(fft_result[j]);
 
-      if (false && count == 152) {
-        putchar('\n');
-        for (int i = 1; i <= 1024; i++) printf("%4d %5d\n", i, cplx_norm2(fft_result[i]));
-        printf("total = %d, hi = %d\n", energy_total, sum_hi);
-        exit(0);
-      }
+      static int64_t hi_ema = 0;
+      hi_ema += (sum_hi - hi_ema) / 8;
+      printf(" %4d ", (int)((sum_hi - hi_ema) / 10000));
 
       static int32_t bins[BREATH_DET_WINDOW_SIZE / 2];
       // From 6.6 kHz = 280-th coefficient
@@ -125,30 +118,48 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
       }
       qsort(bins, 90, sizeof(int32_t), int32_compare_desc);
 
-      // printf(" %4d %4d %4d\n", (int)min(sum_lo / 100, 9999), (int)min(sum_mid / 100, 9999), (int)sum_hi);
-      // printf(" %d %d %4d %4d %4d\n", sum_lo >= 5000, sum_hi >= 200, (int)bins[5], (int)bins[10], (int)bins[60]);
-      // printf(" %d %d %d %d\n", sum_lo >= 5000, sum_hi >= 200, bins[20] >= 30, bins[40] >= 15); // for non-binned
-      printf(" %4d %4d %3d %3d %3d",
-        min(sum_mid / 100 / 256, 9999), min(sum_hi / 360 / 256, 9999),
-        min(999, bins[5] / 256), min(999, bins[10] / 256), min(999, bins[20] / 256));
-      printf(" / %4d", (int)((uint64_t)bins[40] * 10000 / (sum_mid + 1)));
+      /* printf(" %4d %4d %4d",
+        (int)min(sum_lo / 10000 / 256, 9999),
+        (int)min(sum_mid / 100 / 256, 9999),
+        (int)min(sum_hi / 360 / 256, 9999)); */
+      printf("%5d", (int)(sum_lo * 1 / (sum_mid + 1)));
+      /* printf(" %7d %4d",
+        min(bins[10], 9999999),
+        (int)min((uint64_t)bins[10] * 10000 / (sum_mid + 1), 9999)); */
+      printf(" %5d", (bins[10] - bins[20]) * 10 / (bins[20] - bins[50] + 1));
 
-      // printf(" %6d", sum_hi * 10000 / (energy_total == 0 ? 1 : energy_total));
-      // printf(" %6d", sum_hi * 10000 / (energy_total == 0 ? 1 : energy_total) >= 500);
+      printf(" [%d %d %d %d %d %d %d] ",
+        bins[20] / 256 >= 20,
+        (uint64_t)bins[10] * 10000 / (sum_mid + 1) >= 50,
+        (uint64_t)bins[20] * 10000 / (sum_mid + 1) >= 25,
+        (uint64_t)bins[40] * 10000 / (sum_mid + 1) >= 5,
+        (int)(sum_lo / (sum_mid + 1)) >= 10,
+        (bins[10] - bins[20]) * 10 / (bins[30] - bins[50] + 1) <= 150,
+        llabs(sum_hi - hi_ema) <= 500000
+      );
 
-      bool pred =
+      bool pred = (
         // (bins[10] / 256) >= 100;
-        bins[20] / 256 >= 20 &&
-        (uint64_t)bins[10] * 10000 / (sum_mid + 1) >= 50 &&
-        (uint64_t)bins[20] * 10000 / (sum_mid + 1) >= 25 &&
-        (uint64_t)bins[40] * 10000 / (sum_mid + 1) >= 5;
+        (bins[20] / 256 >= 20) +
+        1 +
+        1 +
+        ((uint64_t)bins[40] * 10000 / (sum_mid + 1) >= 5) +
+        1 +
+        ((bins[10] - bins[20]) * 10 / (bins[30] - bins[50] + 1) <= 150) +
+        (llabs(sum_hi - hi_ema) <= 500000)
+      ) >= 7;
+      bool confidence = (
+        1
+      );
 
       static int count = 0;
-      if (pred && count < 4) count++;
-      else if (!pred && count > 0) count--;
       static bool last_out = false;
-      if (!last_out && count >= 3) last_out = true;
-      else if (last_out && count < 2) last_out = false;
+      if (confidence) {
+        if (pred && count < 4) count++;
+        else if (!pred && count > 0) count--;
+        if (!last_out && count >= 3) last_out = true;
+        else if (last_out && count < 2) last_out = false;
+      }
       bool out = last_out;
 
       // printf(" %d", sum_hi >= 150);
