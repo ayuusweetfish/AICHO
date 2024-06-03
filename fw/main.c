@@ -3,6 +3,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include "tusb.h"
+
 #include "i2s.pio.h"
 
 static inline void my_putc(uint8_t c)
@@ -10,7 +12,7 @@ static inline void my_putc(uint8_t c)
   if (c == '\n') uart_putc_raw(uart0, '\r');
   uart_putc_raw(uart0, c);
 }
-static void my_printf(const char *restrict fmt, ...)
+void my_printf(const char *restrict fmt, ...)
 {
   char s[256];
   va_list args;
@@ -38,6 +40,12 @@ int main()
   gpio_set_function(17, GPIO_FUNC_UART);
 
   my_printf("sys clk %u\n", clock_get_hz(clk_sys));
+
+  tuh_init(BOARD_TUH_RHPORT);
+  while (1) {
+    tuh_task();
+  }
+  while (1) { }
 
   uint offset = pio_add_program(pio0, &i2s_program);
   uint sm = pio_claim_unused_sm(pio0, true);
