@@ -43,17 +43,17 @@ int main()
   uint sm = pio_claim_unused_sm(pio0, true);
   i2s_program_init(pio0, sm, offset, 6, 7);
 
-  //sm_config_set_clkdiv(
   pio_sm_set_enabled(pio0, sm, true);
 
   uint32_t count = 0;
+  gpio_set_dir(9, GPIO_IN);
 
   while (1) {
     pio_sm_put_blocking(pio0, sm, 0xccccd4d4u);
     if (++count == 48000) {
       static int parity = 0;
       gpio_put(LED_PIN, parity ^= 1);
-      my_printf("second!\n");
+      my_printf("second! read = %u\n", gpio_get(9));
       count = 0;
     }
   }
