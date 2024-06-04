@@ -28,7 +28,7 @@ int my_printf(const char *restrict fmt, ...)
   return 0;
 }
 
-static uint32_t audio_buf[9600];
+static int16_t audio_buf[9600];
 
 static inline void refill_buffer(int half);
 static void dma_irq0_handler();
@@ -73,7 +73,7 @@ int main()
     int16_t sample = (i < 4800 ?
       (int16_t)(0.5f + GAIN * 256 * sin((float)(i % 100) / 100 * (float)M_PI * 2)) :
       (int16_t)(0.5f + GAIN * 256 * sin((float)(i %  50) /  50 * (float)M_PI * 2)));
-    audio_buf[i] = ((uint32_t)sample << 16) | (uint16_t)sample;
+    audio_buf[i] = sample;
   }
 
   const uint32_t half_size = (sizeof audio_buf) / (sizeof audio_buf[0]) / 2;
@@ -81,6 +81,7 @@ int main()
   dma_channel_config dma_ch0 = dma_channel_get_default_config(0);
   channel_config_set_read_increment(&dma_ch0, true);
   channel_config_set_write_increment(&dma_ch0, false);
+  channel_config_set_transfer_data_size(&dma_ch0, DMA_SIZE_16);
   channel_config_set_dreq(&dma_ch0, pio_get_dreq(pio0, sm, /* is_tx */ true));
   channel_config_set_chain_to(&dma_ch0, 2);
   dma_channel_set_irq0_enabled(0, true);
@@ -89,6 +90,7 @@ int main()
   dma_channel_config dma_ch1 = dma_channel_get_default_config(1);
   channel_config_set_read_increment(&dma_ch1, true);
   channel_config_set_write_increment(&dma_ch1, false);
+  channel_config_set_transfer_data_size(&dma_ch1, DMA_SIZE_16);
   channel_config_set_dreq(&dma_ch1, pio_get_dreq(pio0, sm, /* is_tx */ true));
   channel_config_set_chain_to(&dma_ch1, 3);
   dma_channel_set_irq0_enabled(1, true);
@@ -130,7 +132,7 @@ void fill_buffer(int half)
   for (int i = 0; i < 4800; i++) {
     int16_t sample =
       (int16_t)(0.5f + GAIN * 256 * sin((float)i / period * (float)M_PI * 2));
-    audio_buf[4800 * half + i] = ((uint32_t)sample << 16) | (uint16_t)sample;
+    audio_buf[4800 * half + i] = sample;
   }
 }
 

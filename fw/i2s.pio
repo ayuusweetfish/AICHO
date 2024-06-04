@@ -30,9 +30,9 @@
                     ;        /--- LRCLK
                     ;        |/-- BCLK
 bitloop1:           ;        ||
-    out pins, 1       side 0b10
+    set pins, 0       side 0b10
     jmp x-- bitloop1  side 0b11
-    out pins, 1       side 0b00
+    set pins, 0       side 0b00
     set x, 14         side 0b01
 
 bitloop0:
@@ -47,9 +47,11 @@ public entry_point:
 static inline void i2s_program_init(PIO pio, uint sm, uint offset, uint data_pin, uint clock_pin_base) {
     pio_sm_config sm_config = i2s_program_get_default_config(offset);
     
+    sm_config_set_set_pins(&sm_config, data_pin, 1);
     sm_config_set_out_pins(&sm_config, data_pin, 1);
     sm_config_set_sideset_pins(&sm_config, clock_pin_base);
-    sm_config_set_out_shift(&sm_config, false, true, 32);
+    sm_config_set_out_shift(&sm_config, false, true, 16);
+    sm_config_set_fifo_join(&sm_config, PIO_FIFO_JOIN_TX);
 
     // 42.96875 = 132 MHz / 48kHz / 32 / 2
     sm_config_set_clkdiv_int_frac(&sm_config, 42, 248);
