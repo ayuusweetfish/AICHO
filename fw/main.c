@@ -1,5 +1,6 @@
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
+#include "hardware/dma.h"
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -47,11 +48,13 @@ int main()
 
   my_printf("sys clk %u\n", clock_get_hz(clk_sys));
 
+/*
   tuh_init(BOARD_TUH_RHPORT);
   while (1) {
     tuh_task();
   }
   while (1) { }
+*/
 
   uint offset = pio_add_program(pio0, &i2s_program);
   uint sm = pio_claim_unused_sm(pio0, true);
@@ -59,10 +62,26 @@ int main()
 
   pio_sm_set_enabled(pio0, sm, true);
 
+#define GAIN 4  // 16 for 4Ω speaker, 1 for headphone
+
+  uint32_t audio_buf[9600];
+  for (int i = 0; i < 9600; i++) {
+    int16_t sample = (int16_t)(0.5f + GAIN * 256 * sin((float)(i % 100) / 100 * (float)M_PI * 2));
+    audio_buf[i] = ((uint32_t)sample << 16) | (uint16_t)sample;
+  }
+
+  dma_channel_config dma_ch0 = dma_channel_get_default_config(0);
+  channel_config_set_read_increment(&dma_ch0, true);
+  channel_config_set_write_increment(&dma_ch0, false);
+  channel_config_set_dreq(&dma_ch0, pio_get_dreq(pio0, sm, /* is_tx */ true));
+
+  dma_channel_configure(0, &dma_ch0,
+    &pio0->txf[sm], audio_buf, sizeof audio_buf / audio_buf[0], true);
+
+  while (1) { }
+
   uint32_t count = 0;
   gpio_set_dir(9, GPIO_IN);
-
-#define GAIN 16  // for 4Ω speaker; set to 1 for headphone
 
   while (1) {
     int16_t sample = (count >= 24000 ? 0 : (int16_t)(0.5f + GAIN * 256 * sin((float)count / 100 * (float)M_PI * 2)));
