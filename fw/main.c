@@ -30,6 +30,9 @@ int my_printf(const char *restrict fmt, ...)
 
 static uint32_t audio_buf[9600];
 
+static inline void refill_buffer(int half);
+static void dma_irq0_handler();
+
 int main()
 {
   // 132 MHz
@@ -64,7 +67,7 @@ int main()
 
   pio_sm_set_enabled(pio0, sm, true);
 
-#define GAIN 1  // 16 for 4Ω speaker, 1 for headphone
+#define GAIN 0.5  // 16 for 4Ω speaker, 1 for headphone
 
   for (int i = 0; i < 9600; i++) {
     int16_t sample = (i < 4800 ?
@@ -80,6 +83,7 @@ int main()
   channel_config_set_write_increment(&dma_ch0, false);
   channel_config_set_dreq(&dma_ch0, pio_get_dreq(pio0, sm, /* is_tx */ true));
   channel_config_set_chain_to(&dma_ch0, 2);
+  dma_channel_set_irq0_enabled(0, true);
   dma_channel_configure(0, &dma_ch0, &pio0->txf[sm], audio_buf, half_size, false);
 
   dma_channel_config dma_ch1 = dma_channel_get_default_config(1);
@@ -87,10 +91,14 @@ int main()
   channel_config_set_write_increment(&dma_ch1, false);
   channel_config_set_dreq(&dma_ch1, pio_get_dreq(pio0, sm, /* is_tx */ true));
   channel_config_set_chain_to(&dma_ch1, 3);
+  dma_channel_set_irq0_enabled(1, true);
   dma_channel_configure(1, &dma_ch1, &pio0->txf[sm], audio_buf + half_size, half_size, false);
 
-  uint32_t addr0 = (uint32_t)&audio_buf[0];
-  uint32_t addr1 = (uint32_t)&audio_buf[half_size];
+  irq_set_exclusive_handler(11, dma_irq0_handler);
+  irq_set_enabled(11, true);
+
+  static uint32_t addr0 = (uint32_t)&audio_buf[0];
+  static uint32_t addr1 = (uint32_t)&audio_buf[half_size];
 
   dma_channel_config dma_ch2 = dma_channel_get_default_config(2);
   channel_config_set_read_increment(&dma_ch2, false);
@@ -102,24 +110,8 @@ int main()
   channel_config_set_write_increment(&dma_ch3, false);
   dma_channel_configure(3, &dma_ch3, &dma_hw->ch[0].al3_read_addr_trig, &addr0, 1, false);
 
+  // Start channel 0 (the first half)
   dma_channel_set_config(0, &dma_ch0, true);
-
-  while (1) { }
-
-  uint32_t count = 0;
-  gpio_set_dir(9, GPIO_IN);
-
-  while (1) {
-    int16_t sample = (count >= 24000 ? 0 : (int16_t)(0.5f + GAIN * 256 * sin((float)count / 100 * (float)M_PI * 2)));
-    pio_sm_put_blocking(pio0, sm, ((uint32_t)sample << 16) | (uint16_t)sample);
-    if (++count == 48000) {
-      static int parity = 0;
-      gpio_put(LED_PIN, parity ^= 1);
-      gpio_put(23, 0);
-      my_printf("second! read = %u\n", gpio_get(9));
-      count = 0;
-    }
-  }
 
   while (1) {
     gpio_put(LED_PIN, 1); sleep_ms(100);
@@ -127,5 +119,30 @@ int main()
     static uint32_t i = 0;
     i++;
     my_printf("Hello, UART %u!%c", i, i % 2 == 0 ? '\n' : '\t');
+  }
+}
+
+void fill_buffer(int half)
+{
+  static uint32_t seed = 1;
+  seed = seed * 1103515245 + 12345;
+  uint32_t period = ((seed >> 3) ^ (seed >> 9)) % 50 + 50;
+  for (int i = 0; i < 4800; i++) {
+    int16_t sample =
+      (int16_t)(0.5f + GAIN * 256 * sin((float)i / period * (float)M_PI * 2));
+    audio_buf[4800 * half + i] = ((uint32_t)sample << 16) | (uint16_t)sample;
+  }
+}
+
+void dma_irq0_handler()
+{
+  if (dma_channel_get_irq0_status(0)) {
+    dma_channel_acknowledge_irq0(0);
+    gpio_put(23, 0);
+    fill_buffer(0);
+  } else {
+    dma_channel_acknowledge_irq0(1);
+    gpio_put(23, 1);
+    fill_buffer(1);
   }
 }
