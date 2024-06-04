@@ -35,6 +35,10 @@ int main()
   gpio_init(LED_PIN);
   gpio_set_dir(LED_PIN, GPIO_OUT);
 
+  gpio_init(23);
+  gpio_set_dir(23, GPIO_OUT);
+  gpio_put(23, 1);
+
   uart_init(uart0, 115200);
   gpio_set_function(16, GPIO_FUNC_UART);
   gpio_set_function(17, GPIO_FUNC_UART);
@@ -51,18 +55,24 @@ int main()
 
   uint offset = pio_add_program(pio0, &i2s_program);
   uint sm = pio_claim_unused_sm(pio0, true);
-  i2s_program_init(pio0, sm, offset, 6, 7);
+  i2s_program_init(pio0, sm, offset, 2, 3);
 
   pio_sm_set_enabled(pio0, sm, true);
 
   uint32_t count = 0;
   gpio_set_dir(9, GPIO_IN);
 
+  uint32_t seed = 1;
+
   while (1) {
-    pio_sm_put_blocking(pio0, sm, 0xccccd4d4u);
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    uint16_t sample = (seed >> 5) ^ (seed >> 11);
+    sample >>= 6;
+    pio_sm_put_blocking(pio0, sm, ((uint32_t)sample << 16) | sample);
     if (++count == 48000) {
       static int parity = 0;
       gpio_put(LED_PIN, parity ^= 1);
+      gpio_put(23, 0);
       my_printf("second! read = %u\n", gpio_get(9));
       count = 0;
     }
