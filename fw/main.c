@@ -1,5 +1,6 @@
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -62,13 +63,11 @@ int main()
   uint32_t count = 0;
   gpio_set_dir(9, GPIO_IN);
 
-  uint32_t seed = 1;
+#define GAIN 16  // for 4Ω speaker; set to 1 for headphone
 
   while (1) {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    uint16_t sample = (seed >> 5) ^ (seed >> 11);
-    sample >>= 6;
-    pio_sm_put_blocking(pio0, sm, ((uint32_t)sample << 16) | sample);
+    int16_t sample = (count >= 24000 ? 0 : (int16_t)(0.5f + GAIN * 256 * sin((float)count / 100 * (float)M_PI * 2)));
+    pio_sm_put_blocking(pio0, sm, ((uint32_t)sample << 16) | (uint16_t)sample);
     if (++count == 48000) {
       static int parity = 0;
       gpio_put(LED_PIN, parity ^= 1);
