@@ -13,7 +13,7 @@ static inline void my_putc(uint8_t c)
   if (c == '\n') uart_putc_raw(uart0, '\r');
   uart_putc_raw(uart0, c);
 }
-void my_printf(const char *restrict fmt, ...)
+int my_printf(const char *restrict fmt, ...)
 {
   char s[256];
   va_list args;
@@ -24,6 +24,7 @@ void my_printf(const char *restrict fmt, ...)
     for (int i = 0; i < 3; i++) my_putc('.');
     my_putc('\n');
   }
+  return 0;
 }
 
 int main()
@@ -46,13 +47,11 @@ int main()
 
   my_printf("sys clk %u\n", clock_get_hz(clk_sys));
 
-/*
   tuh_init(BOARD_TUH_RHPORT);
   while (1) {
     tuh_task();
   }
   while (1) { }
-*/
 
   uint offset = pio_add_program(pio0, &i2s_program);
   uint sm = pio_claim_unused_sm(pio0, true);

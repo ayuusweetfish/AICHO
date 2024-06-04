@@ -1,7 +1,7 @@
 #include "pico/stdlib.h"
 #include "tusb.h"
 
-void my_printf(const char *restrict fmt, ...);
+int my_printf(const char *restrict fmt, ...);
 #define printf my_printf
 
 void tuh_mount_cb(uint8_t dev_addr)
@@ -77,6 +77,14 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
   {
     hid_info[instance].report_count = tuh_hid_parse_report_descriptor(hid_info[instance].report_info, MAX_REPORT, desc_report, desc_len);
     printf("HID has %u reports \r\n", hid_info[instance].report_count);
+
+    for (int i = 0; i < hid_info[instance].report_count; i++) {
+      printf(" - id %d usage %d usage_page %d\n",
+        (int)hid_info[instance].report_info[i].report_id,
+        (int)hid_info[instance].report_info[i].usage,
+        (int)hid_info[instance].report_info[i].usage_page
+      );
+    }
   }
 
   // request to receive report
@@ -97,6 +105,7 @@ void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance)
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len)
 {
   uint8_t const itf_protocol = tuh_hid_interface_protocol(dev_addr, instance);
+  printf("[%d] received report (len %d)\n", (int)dev_addr, (int)len);
 
   switch (itf_protocol)
   {
@@ -230,6 +239,7 @@ static void process_mouse_report(hid_mouse_report_t const * report)
 //--------------------------------------------------------------------+
 static void process_generic_report(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len)
 {
+  printf("generic report %d\n", (int)dev_addr);
   (void) dev_addr;
 
   uint8_t const rpt_count = hid_info[instance].report_count;
