@@ -28,6 +28,8 @@ int my_printf(const char *restrict fmt, ...)
   return 0;
 }
 
+static uint32_t audio_buf[9600];
+
 int main()
 {
   // 132 MHz
@@ -62,21 +64,45 @@ int main()
 
   pio_sm_set_enabled(pio0, sm, true);
 
-#define GAIN 4  // 16 for 4Ω speaker, 1 for headphone
+#define GAIN 1  // 16 for 4Ω speaker, 1 for headphone
 
-  uint32_t audio_buf[9600];
   for (int i = 0; i < 9600; i++) {
-    int16_t sample = (int16_t)(0.5f + GAIN * 256 * sin((float)(i % 100) / 100 * (float)M_PI * 2));
+    int16_t sample = (i < 4800 ?
+      (int16_t)(0.5f + GAIN * 256 * sin((float)(i % 100) / 100 * (float)M_PI * 2)) :
+      (int16_t)(0.5f + GAIN * 256 * sin((float)(i %  50) /  50 * (float)M_PI * 2)));
     audio_buf[i] = ((uint32_t)sample << 16) | (uint16_t)sample;
   }
+
+  const uint32_t half_size = (sizeof audio_buf) / (sizeof audio_buf[0]) / 2;
 
   dma_channel_config dma_ch0 = dma_channel_get_default_config(0);
   channel_config_set_read_increment(&dma_ch0, true);
   channel_config_set_write_increment(&dma_ch0, false);
   channel_config_set_dreq(&dma_ch0, pio_get_dreq(pio0, sm, /* is_tx */ true));
+  channel_config_set_chain_to(&dma_ch0, 2);
+  dma_channel_configure(0, &dma_ch0, &pio0->txf[sm], audio_buf, half_size, false);
 
-  dma_channel_configure(0, &dma_ch0,
-    &pio0->txf[sm], audio_buf, sizeof audio_buf / audio_buf[0], true);
+  dma_channel_config dma_ch1 = dma_channel_get_default_config(1);
+  channel_config_set_read_increment(&dma_ch1, true);
+  channel_config_set_write_increment(&dma_ch1, false);
+  channel_config_set_dreq(&dma_ch1, pio_get_dreq(pio0, sm, /* is_tx */ true));
+  channel_config_set_chain_to(&dma_ch1, 3);
+  dma_channel_configure(1, &dma_ch1, &pio0->txf[sm], audio_buf + half_size, half_size, false);
+
+  uint32_t addr0 = (uint32_t)&audio_buf[0];
+  uint32_t addr1 = (uint32_t)&audio_buf[half_size];
+
+  dma_channel_config dma_ch2 = dma_channel_get_default_config(2);
+  channel_config_set_read_increment(&dma_ch2, false);
+  channel_config_set_write_increment(&dma_ch2, false);
+  dma_channel_configure(2, &dma_ch2, &dma_hw->ch[1].al3_read_addr_trig, &addr1, 1, false);
+
+  dma_channel_config dma_ch3 = dma_channel_get_default_config(3);
+  channel_config_set_read_increment(&dma_ch3, false);
+  channel_config_set_write_increment(&dma_ch3, false);
+  dma_channel_configure(3, &dma_ch3, &dma_hw->ch[0].al3_read_addr_trig, &addr0, 1, false);
+
+  dma_channel_set_config(0, &dma_ch0, true);
 
   while (1) { }
 
