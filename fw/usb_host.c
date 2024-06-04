@@ -7,6 +7,7 @@ void my_printf(const char *restrict fmt, ...);
 void tuh_mount_cb(uint8_t dev_addr)
 {
   printf("A device with address %d is mounted\n", (int)dev_addr);
+  const uint32_t LED_PIN = 22;
   while (0) {
     gpio_put(LED_PIN, 1); sleep_ms(100);
     gpio_put(LED_PIN, 0); sleep_ms(100);

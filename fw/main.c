@@ -31,7 +31,7 @@ int main()
   // python pico-sdk/src/rp2_common/hardware_clocks/scripts/vcocalc.py 132
   set_sys_clock_pll(1584000000, 6, 2);
 
-  const uint32_t LED_PIN = 25;
+  const uint32_t LED_PIN = 22;
   gpio_init(LED_PIN);
   gpio_set_dir(LED_PIN, GPIO_OUT);
 
@@ -41,11 +41,13 @@ int main()
 
   my_printf("sys clk %u\n", clock_get_hz(clk_sys));
 
+/*
   tuh_init(BOARD_TUH_RHPORT);
   while (1) {
     tuh_task();
   }
   while (1) { }
+*/
 
   uint offset = pio_add_program(pio0, &i2s_program);
   uint sm = pio_claim_unused_sm(pio0, true);
