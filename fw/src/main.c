@@ -9,6 +9,7 @@
 #include "tusb.h"
 
 #include "i2s.pio.h"
+#include "ws2812.pio.h"
 
 #define uQOA_IMPL
 #include "uqoa.h"
@@ -162,6 +163,35 @@ static inline void sampler_decode(struct sampler *s, int16_t out[20])
 
 struct sampler s1;
 
+// ============ LED strip ============
+
+static dma_channel_config dma_ch4;
+
+void leds_init()
+{
+  uint offset = pio_add_program(pio1, &ws2812_program);
+  uint sm = pio_claim_unused_sm(pio1, true);
+  ws2812_program_init(pio1, sm, offset, 11);
+
+  pio_sm_set_enabled(pio1, sm, true);
+
+  dma_ch4 = dma_channel_get_default_config(4);
+  channel_config_set_read_increment(&dma_ch4, false);
+  channel_config_set_write_increment(&dma_ch4, false);
+  dma_channel_set_config(4, &dma_ch4, false);
+}
+
+void leds_blast(int n)
+{
+  static uint32_t leds_buf[80];
+  for (int i = 0; i < n; i++) {
+    leds_buf[i] = 0xaa55ccd4;
+  }
+
+  dma_channel_set_read_addr(4, leds_buf, false);
+  dma_channel_set_trans_count(4, n, true);
+}
+
 // ============ Entry point ============
 
 int main()
@@ -203,6 +233,13 @@ int main()
   }
   while (1) { }
 */
+
+  leds_init();
+  while (1) {
+    leds_blast(5);
+    gpio_put(act_1, 1); sleep_ms(100);
+    gpio_put(act_1, 0); sleep_ms(400);
+  }
 
   audio_buf_init();
   audio_buf_resume();

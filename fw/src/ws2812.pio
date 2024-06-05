@@ -1,0 +1,32 @@
+.program ws2812
+
+.wrap_target
+  set pins, 0b1111  [2 - 1]
+  out pins, 4       [5 - 1]
+  set pins, 0b0000  [3 - 1]
+.wrap
+
+% c-sdk {
+static inline void ws2812_program_init(PIO pio, uint sm, uint offset, uint out_pin_base) {
+  pio_sm_config sm_config = ws2812_program_get_default_config(offset);
+  sm_config_set_set_pins(&sm_config, out_pin_base, 4);
+  sm_config_set_out_pins(&sm_config, out_pin_base, 4);
+  sm_config_set_out_shift(&sm_config, false, true, 32);
+  sm_config_set_fifo_join(&sm_config, PIO_FIFO_JOIN_TX);
+
+  // 16.5 = 132 MHz / 800 kHz / (2 + 5 + 3)
+  sm_config_set_clkdiv_int_frac(&sm_config, 16, 128);
+
+  pio_sm_init(pio, sm, offset, &sm_config);
+
+  pio_gpio_init(pio, out_pin_base + 0);
+  pio_gpio_init(pio, out_pin_base + 1);
+  pio_gpio_init(pio, out_pin_base + 2);
+  pio_gpio_init(pio, out_pin_base + 3);
+
+  // 4 pins starting from `out_pin_base`, direction is output
+  pio_sm_set_consecutive_pindirs(pio, sm, out_pin_base, 4, true);
+  // Clear outputs
+  pio_sm_set_pins(pio, sm, 0);
+}
+%}
