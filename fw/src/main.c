@@ -176,9 +176,12 @@ void leds_init()
   pio_sm_set_enabled(pio1, sm, true);
 
   dma_ch4 = dma_channel_get_default_config(4);
-  channel_config_set_read_increment(&dma_ch4, false);
+  channel_config_set_read_increment(&dma_ch4, true);
   channel_config_set_write_increment(&dma_ch4, false);
   dma_channel_set_config(4, &dma_ch4, false);
+  dma_channel_set_write_addr(4, &pio1->txf[sm], false);
+
+  // while (1) pio_sm_put_blocking(pio1, sm, 0xffffffff);
 }
 
 void leds_blast(int n)
@@ -236,7 +239,7 @@ int main()
 
   leds_init();
   while (1) {
-    leds_blast(5);
+    leds_blast(60);
     gpio_put(act_1, 1); sleep_ms(100);
     gpio_put(act_1, 0); sleep_ms(400);
   }

@@ -1,9 +1,10 @@
 .program ws2812
 
 .wrap_target
+  out x, 4
   set pins, 0b1111  [2 - 1]
-  out pins, 4       [5 - 1]
-  set pins, 0b0000  [3 - 1]
+  mov pins, x       [5 - 1]
+  set pins, 0b0000  [3 - 2]
 .wrap
 
 % c-sdk {
