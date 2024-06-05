@@ -1,6 +1,7 @@
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
+#include "hardware/flash.h"
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -8,6 +9,9 @@
 #include "tusb.h"
 
 #include "i2s.pio.h"
+
+#define uQOA_IMPL
+#include "uqoa.h"
 
 static inline void my_putc(uint8_t c)
 {
@@ -28,11 +32,65 @@ int my_printf(const char *restrict fmt, ...)
   return 0;
 }
 
+extern uint32_t __etext;
+#define FLASH_BASE  0x10000000
+#define AUXDAT_ADDR 0x00100000 // 1 MiB
+#define AUXDAT(_offs) (void *)(FLASH_BASE + AUXDAT_ADDR + (_offs))
+
+uint8_t flash_test_write_buf[256 * 32];
+
+__attribute__ ((used))
+void flash_erase_64k(uint32_t addr)
+{
+  flash_range_erase(AUXDAT_ADDR + addr, 65536);
+}
+
+__attribute__ ((used))
+void flash_test_write(uint32_t addr, size_t size)
+{
+  flash_range_program(AUXDAT_ADDR + addr, flash_test_write_buf, sizeof flash_test_write_buf);
+}
+
 static int16_t audio_buf[2400];
 static const uint32_t audio_buf_half_size = (sizeof audio_buf) / (sizeof audio_buf[0]) / 2;
 
 static inline void refill_buffer(int half);
 static void dma_irq0_handler();
+
+struct sampler {
+  uint32_t start, len;
+  qoa_lms qoa_state;
+  uint32_t ptr;
+};
+
+static inline void sampler_decode(struct sampler *s, int16_t out[20])
+{
+  if (s->ptr % (258 * 8) == 0) {
+    uint64_t h = __builtin_bswap64(*(uint64_t *)AUXDAT(s->start + s->ptr));
+    uint64_t w = __builtin_bswap64(*(uint64_t *)AUXDAT(s->start + s->ptr + 8));
+    for (int i = 0; i < 4; i++)
+      s->qoa_state.history[i] = (int16_t)(h >> (16 * (3 - i)));
+    for (int i = 0; i < 4; i++)
+      s->qoa_state.weights[i] = (int16_t)(w >> (16 * (3 - i)));
+    s->ptr += 16;
+  /*
+    my_printf("reload! %016llx %016llx\n", h, w);
+    my_printf("%08x %08x %08x %08x\n",
+      (uint32_t)s->qoa_state.weights[0],
+      (uint32_t)s->qoa_state.weights[1],
+      (uint32_t)s->qoa_state.weights[2],
+      (uint32_t)s->qoa_state.weights[3]
+    );
+  */
+  }
+  if (s->ptr >= s->len) s->ptr = 0;
+  uint64_t slice = __builtin_bswap64(*(uint64_t *)AUXDAT(s->start + s->ptr));
+  // my_printf("decode slice %016llx\n", slice);
+  qoa_decode_slice(&s->qoa_state, slice, out);
+  s->ptr += 8;
+}
+
+struct sampler s1;
 
 int main()
 {
@@ -54,6 +112,32 @@ int main()
 
   my_printf("sys clk %u\n", clock_get_hz(clk_sys));
 
+  my_printf("__etext is %08x\n", &__etext);
+  assert((uint32_t)&__etext <= FLASH_BASE + AUXDAT_ADDR);
+
+  my_printf("flash_erase_64k()  at %08x\n", &flash_erase_64k);
+  my_printf("flash_test_write() at %08x\n", &flash_test_write);
+
+  // my_printf("word of aux data %08x\n", *(uint32_t *)(FLASH_BASE + AUXDAT_ADDR + 104));
+
+#define FILE_ADDR_zq3jTYLUbiEf_128_bin 0
+#define FILE_SIZE_zq3jTYLUbiEf_128_bin 1161008
+  s1 = (struct sampler){
+    .start = FILE_ADDR_zq3jTYLUbiEf_128_bin,
+    .len = FILE_SIZE_zq3jTYLUbiEf_128_bin,
+    .ptr = 0,
+  };
+
+/*
+  int16_t samples[20];
+  for (int i = 0; i < 259; i++) {
+    sampler_decode(&s1, samples);
+    if (1) for (int j = 0; j < 20; j++)
+      my_printf("%6d%c", (int)samples[j], j == 19 ? '\n' : ' ');
+  }
+  while (1) { }
+*/
+
 /*
   tuh_init(BOARD_TUH_RHPORT);
   while (1) {
@@ -68,7 +152,7 @@ int main()
 
   pio_sm_set_enabled(pio0, sm, true);
 
-#define GAIN 8  // 16 for 4Ω speaker, 1 for headphone
+#define GAIN 4  // 16 for 4Ω speaker, 1 for headphone
 
   for (int i = 0; i < audio_buf_half_size * 2; i++) {
     int16_t sample = (int16_t)(0.5f + GAIN * 256 * sin((float)(i % 100) / 100 * (float)M_PI * 2));
@@ -118,6 +202,7 @@ int main()
     static uint32_t i = 0;
     i++;
     my_printf("Hello, UART %u!%c", i, i % 2 == 0 ? '\n' : '\t');
+  /*
     if (i >= 5 && i % 5 == 0) {
       channel_config_set_enable(&dma_ch0, false);
       dma_channel_set_config(0, &dma_ch0, false);
@@ -125,11 +210,13 @@ int main()
       channel_config_set_enable(&dma_ch0, true);
       dma_channel_configure(0, &dma_ch0, &pio0->txf[sm], audio_buf, audio_buf_half_size, true);
     }
+  */
   }
 }
 
 void fill_buffer(bool half)
 {
+/*
   static uint32_t count = 0;
   static uint32_t seed = 1;
   if (++count == 4) {
@@ -141,6 +228,14 @@ void fill_buffer(bool half)
     int16_t sample =
       (int16_t)(0.5f + GAIN * 256 * sin((float)(i + count * audio_buf_half_size) / period * (float)M_PI * 2));
     audio_buf[audio_buf_half_size * (int)half + i] = sample;
+  }
+*/
+  int16_t *buf = audio_buf + (audio_buf_half_size * (int)half);
+  assert(audio_buf_half_size % 20 == 0);
+  for (int i = 0; i < audio_buf_half_size; i += 20) {
+    sampler_decode(&s1, buf + i);
+    for (int j = 0; j < 20; j++)
+      buf[i + j] >>= 7;
   }
 }
 
