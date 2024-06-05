@@ -155,13 +155,77 @@ static inline void sampler_decode(struct sampler *s, int16_t out[20])
       s->qoa_state.weights[i] = (int16_t)(w >> (16 * (3 - i)));
     s->ptr += 16;
   }
-  if (s->ptr >= s->len) s->ptr = 0;
   uint64_t slice = __builtin_bswap64(*(uint64_t *)AUXDAT(s->start + s->ptr));
   qoa_decode_slice(&s->qoa_state, slice, out);
-  s->ptr += 8;
+  if ((s->ptr += 8) >= s->len) s->ptr = 0;
 }
 
 struct sampler s1;
+
+#define POLYPHONY 8
+struct polyphonic_sampler {
+  critical_section_t crit;
+  struct sampler s[POLYPHONY];
+  bool active[POLYPHONY];
+};
+
+static inline void polyphonic_init(struct polyphonic_sampler *s)
+{
+  critical_section_init(&s->crit);
+  for (uint8_t i = 0; i < POLYPHONY; i++) s->active[i] = 0;
+}
+
+static inline uint8_t polyphonic_trigger(
+  struct polyphonic_sampler *s,
+  uint32_t start, uint32_t len
+) {
+  critical_section_enter_blocking(&s->crit);
+
+  // Find a voice
+  uint8_t voice_id = 0xff;
+  for (uint8_t i = 0; i < POLYPHONY; i++)
+    if (!s->active[i]) {
+      voice_id = i;
+      break;
+    }
+  if (voice_id == 0xff) {
+    // Steal a random voice
+    for (uint8_t i = 0; i < POLYPHONY - 1; i++) {
+      s->s[i] = s->s[i + 1];
+      // `active[i]` is true
+    }
+    voice_id = POLYPHONY - 1;
+  }
+
+  s->s[voice_id] = (struct sampler){
+    .start = start,
+    .len = len,
+    .ptr = 0,
+  };
+  s->active[voice_id] = true;
+
+  critical_section_exit(&s->crit);
+}
+
+static inline void polyphonic_out(struct polyphonic_sampler *s, int16_t out[20])
+{
+  int32_t mix[20] = { 0 };
+  int16_t voice[20];
+
+  critical_section_enter_blocking(&s->crit);
+  for (uint8_t i = 0; i < POLYPHONY; i++)
+    if (s->active[i]) {
+      sampler_decode(&s->s[i], voice);
+      for (int j = 0; j < 20; j++) mix[j] += voice[j];
+      if (s->s[i].ptr == 0) s->active[i] = false;
+    }
+  critical_section_exit(&s->crit);
+
+  for (int j = 0; j < 20; j++)
+    out[j] = mix[j] >> 7;
+}
+
+struct polyphonic_sampler ps1;
 
 // ============ LED strip ============
 
@@ -229,6 +293,8 @@ int main()
     .ptr = 0,
   };
 
+  polyphonic_init(&ps1);
+
 /*
   tuh_init(BOARD_TUH_RHPORT);
   while (1) {
@@ -237,15 +303,21 @@ int main()
   while (1) { }
 */
 
+/*
   leds_init();
   while (1) {
     leds_blast(60);
     gpio_put(act_1, 1); sleep_ms(100);
     gpio_put(act_1, 0); sleep_ms(400);
   }
+*/
 
   audio_buf_init();
   audio_buf_resume();
+
+  polyphonic_trigger(&ps1,
+    FILE_ADDR_zq3jTYLUbiEf_128_bin,
+    FILE_SIZE_zq3jTYLUbiEf_128_bin);
 
   while (1) {
     gpio_put(act_1, 1); sleep_ms(100);
@@ -260,6 +332,10 @@ int main()
       audio_buf_resume();
       gpio_put(act_2, 1);
     }
+    if (i % 10 == 3)
+      polyphonic_trigger(&ps1,
+        FILE_ADDR_zq3jTYLUbiEf_128_bin,
+        FILE_SIZE_zq3jTYLUbiEf_128_bin);
   }
 }
 
@@ -267,8 +343,9 @@ void refill_buffer(int16_t *buf)
 {
   assert(audio_buf_half_size % 20 == 0);
   for (int i = 0; i < audio_buf_half_size; i += 20) {
-    sampler_decode(&s1, buf + i);
-    for (int j = 0; j < 20; j++)
-      buf[i + j] >>= 7;
+    // sampler_decode(&s1, buf + i);
+    // for (int j = 0; j < 20; j++)
+    //   buf[i + j] >>= 7;
+    polyphonic_out(&ps1, buf + i);
   }
 }
