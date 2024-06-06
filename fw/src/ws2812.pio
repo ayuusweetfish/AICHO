@@ -3,8 +3,8 @@
 .wrap_target
   out x, 4
   set pins, 0b1111  [2 - 1]
-  mov pins, x       [5 - 1]
-  set pins, 0b0000  [3 - 2]
+  mov pins, x       [2 - 1]
+  set pins, 0b0000  [2 - 2]
 .wrap
 
 % c-sdk {
@@ -15,8 +15,8 @@ static inline void ws2812_program_init(PIO pio, uint sm, uint offset, uint out_p
   sm_config_set_out_shift(&sm_config, false, true, 32);
   sm_config_set_fifo_join(&sm_config, PIO_FIFO_JOIN_TX);
 
-  // 16.5 = 132 MHz / 800 kHz / (2 + 5 + 3)
-  sm_config_set_clkdiv_int_frac(&sm_config, 16, 128);
+  // 27.5 = 132 MHz / 800 kHz / (2 + 2 + 2)
+  sm_config_set_clkdiv_int_frac(&sm_config, 27, 128);
 
   pio_sm_init(pio, sm, offset, &sm_config);
 

@@ -248,15 +248,73 @@ void leds_init()
   // while (1) pio_sm_put_blocking(pio1, sm, 0xffffffff);
 }
 
-void leds_blast(int n)
+// Input is `a[pendent index][strip index][RGB]`
+void leds_blast(uint8_t a[][4][3], int n)
 {
-  static uint32_t leds_buf[80];
+  // Little-endian, PIO shifts right
+  static uint8_t leds_buf[80][12];
+
+/*
+  static uint32_t seed = 24067;
+  for (int i = 0; i < 80 * 4; i++) {
+    seed = seed * 1103515245 + 12345;
+    leds_buf[i % 80] ^= (seed ^ (seed << 11));
+  }
+*/
+/*
   for (int i = 0; i < n; i++) {
     leds_buf[i] = 0xaa55ccd4;
   }
+*/
+
+  for (int i = 0; i < n; i++) {
+    // G
+    for (int j = 0; j < 4; j++)
+      leds_buf[i][j] =
+        (((a[i][0][1] >> (0 + j * 2)) & 1) << 0) |
+        (((a[i][1][1] >> (0 + j * 2)) & 1) << 1) |
+        (((a[i][2][1] >> (0 + j * 2)) & 1) << 2) |
+        (((a[i][3][1] >> (0 + j * 2)) & 1) << 3) |
+        (((a[i][0][1] >> (1 + j * 2)) & 1) << 4) |
+        (((a[i][1][1] >> (1 + j * 2)) & 1) << 5) |
+        (((a[i][2][1] >> (1 + j * 2)) & 1) << 6) |
+        (((a[i][3][1] >> (1 + j * 2)) & 1) << 7);
+    // R
+    for (int j = 0; j < 4; j++)
+      leds_buf[i][j + 4] =
+        (((a[i][0][0] >> (0 + j * 2)) & 1) << 0) |
+        (((a[i][1][0] >> (0 + j * 2)) & 1) << 1) |
+        (((a[i][2][0] >> (0 + j * 2)) & 1) << 2) |
+        (((a[i][3][0] >> (0 + j * 2)) & 1) << 3) |
+        (((a[i][0][0] >> (1 + j * 2)) & 1) << 4) |
+        (((a[i][1][0] >> (1 + j * 2)) & 1) << 5) |
+        (((a[i][2][0] >> (1 + j * 2)) & 1) << 6) |
+        (((a[i][3][0] >> (1 + j * 2)) & 1) << 7);
+    // B
+    for (int j = 0; j < 4; j++)
+      leds_buf[i][j + 8] =
+        (((a[i][0][2] >> (0 + j * 2)) & 1) << 0) |
+        (((a[i][1][2] >> (0 + j * 2)) & 1) << 1) |
+        (((a[i][2][2] >> (0 + j * 2)) & 1) << 2) |
+        (((a[i][3][2] >> (0 + j * 2)) & 1) << 3) |
+        (((a[i][0][2] >> (1 + j * 2)) & 1) << 4) |
+        (((a[i][1][2] >> (1 + j * 2)) & 1) << 5) |
+        (((a[i][2][2] >> (1 + j * 2)) & 1) << 6) |
+        (((a[i][3][2] >> (1 + j * 2)) & 1) << 7);
+
+/*
+    for (int j = 0; j < 12; j++)
+      my_printf(" %01x %01x", (int)(leds_buf[i][j] & 0xf), (int)(leds_buf[i][j] >> 4));
+    my_printf("\n");
+    for (int j = 0; j < 3; j++)
+      my_printf(" %08x", ((uint32_t *)&leds_buf[i][0])[j]);
+    my_printf("\n");
+*/
+  }
+  // my_printf("======\n");
 
   dma_channel_set_read_addr(4, leds_buf, false);
-  dma_channel_set_trans_count(4, n, true);
+  dma_channel_set_trans_count(4, n * 3, true);
 }
 
 // ============ Entry point ============
@@ -303,14 +361,22 @@ int main()
   while (1) { }
 */
 
-/*
   leds_init();
+
+  uint8_t a[10][4][3] = {{{ 0 }}};
   while (1) {
-    leds_blast(60);
+    if (a[0][0][1] > 0) {
+      if (++a[0][0][1] >= 10) a[0][0][1] = 0;
+    } else {
+      if (++a[0][0][0] >= 10) { a[0][0][0] = 0; a[0][0][1] = 1; }
+    }
+    a[1][0][0] = 0x33; a[1][0][1] = 0x01; a[1][0][2] = 0x60;
+    a[2][0][0] = 0x33; a[2][0][1] = 0x01; a[2][0][2] = 0x60;
+    a[3][0][0] = 0x33; a[3][0][1] = 0x01; a[3][0][2] = 0x60;
+    leds_blast(a, 10);
     gpio_put(act_1, 1); sleep_ms(100);
     gpio_put(act_1, 0); sleep_ms(400);
   }
-*/
 
   audio_buf_init();
   audio_buf_resume();
