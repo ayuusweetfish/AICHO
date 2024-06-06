@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP PCM1808PWR
+D 99dB SNR Stereo ADC With Single-Ended Inputs
+K
+F http://www.ti.com/lit/gpn/PCM1808
+$ENDCMP
+#
+#End Doc Library

@@ -4,4 +4,5 @@
   (lib (name "MAX98357AETE+")(type "KiCad")(uri "${KIPRJMOD}/libs/MAX98357AETE+/MAX98357AETE+.pretty")(options "")(descr ""))
   (lib (name "AICHO_footprints")(type "KiCad")(uri "${KIPRJMOD}/AICHO_footprints.pretty")(options "")(descr ""))
   (lib (name "SN74AHCT245PWR")(type "KiCad")(uri "${KIPRJMOD}/libs/SN74AHCT245PWR/SN74AHCT245PWR.pretty")(options "")(descr ""))
+  (lib (name "PCM1808PWR")(type "KiCad")(uri "${KIPRJMOD}/libs/PCM1808PWR/PCM1808PWR.pretty")(options "")(descr ""))
 )
