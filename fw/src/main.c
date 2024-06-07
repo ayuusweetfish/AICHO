@@ -61,10 +61,10 @@ void flash_test_write(uint32_t addr, size_t size)
 
 // ============ Audio buffer ============
 
-static int16_t audio_buf[2400];
+static uint32_t audio_buf[2400];
 static const uint32_t audio_buf_half_size = (sizeof audio_buf) / (sizeof audio_buf[0]) / 2;
 
-static inline void refill_buffer(int16_t *buf);
+static inline void refill_buffer(uint32_t *buf);
 static void dma_irq0_handler();
 
 static dma_channel_config dma_ch0, dma_ch1, dma_ch2, dma_ch3;
@@ -80,7 +80,7 @@ void audio_buf_init()
   dma_ch0 = dma_channel_get_default_config(0);
   channel_config_set_read_increment(&dma_ch0, true);
   channel_config_set_write_increment(&dma_ch0, false);
-  channel_config_set_transfer_data_size(&dma_ch0, DMA_SIZE_16);
+  channel_config_set_transfer_data_size(&dma_ch0, DMA_SIZE_32);
   channel_config_set_dreq(&dma_ch0, pio_get_dreq(pio0, sm, /* is_tx */ true));
   channel_config_set_chain_to(&dma_ch0, 2);
   dma_channel_set_irq0_enabled(0, true);
@@ -89,7 +89,7 @@ void audio_buf_init()
   dma_ch1 = dma_channel_get_default_config(1);
   channel_config_set_read_increment(&dma_ch1, true);
   channel_config_set_write_increment(&dma_ch1, false);
-  channel_config_set_transfer_data_size(&dma_ch1, DMA_SIZE_16);
+  channel_config_set_transfer_data_size(&dma_ch1, DMA_SIZE_32);
   channel_config_set_dreq(&dma_ch1, pio_get_dreq(pio0, sm, /* is_tx */ true));
   channel_config_set_chain_to(&dma_ch1, 3);
   dma_channel_set_irq0_enabled(1, true);
@@ -205,7 +205,7 @@ static inline uint8_t polyphonic_trigger(
   critical_section_exit(&s->crit);
 }
 
-static inline void polyphonic_out(struct polyphonic_sampler *s, int16_t out[20])
+static inline void polyphonic_out(struct polyphonic_sampler *s, uint32_t out[20])
 {
   int32_t mix[20] = { 0 };
   int16_t voice[20];
@@ -219,8 +219,11 @@ static inline void polyphonic_out(struct polyphonic_sampler *s, int16_t out[20])
     }
   critical_section_exit(&s->crit);
 
-  for (int j = 0; j < 20; j++)
-    out[j] = mix[j] >> 7;
+  for (int j = 0; j < 20; j++) {
+    int16_t sample = mix[j] >> 7;
+    // (R << 16) | L
+    out[j] = (((uint32_t)sample << 16) | (uint32_t)sample);
+  }
 }
 
 struct polyphonic_sampler ps1;
@@ -431,7 +434,7 @@ int main()
   }
 }
 
-void refill_buffer(int16_t *buf)
+void refill_buffer(uint32_t *buf)
 {
   assert(audio_buf_half_size % 20 == 0);
   for (int i = 0; i < audio_buf_half_size; i += 20) {
