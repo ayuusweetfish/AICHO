@@ -13,6 +13,7 @@ pico_generate_pio_header(aicho ${CMAKE_CURRENT_LIST_DIR}/src/ws2812.pio)
 target_sources(aicho PRIVATE src/main.c src/usb_host.c)
 target_link_libraries(aicho
   pico_stdlib
+  pico_multicore
   hardware_dma
   hardware_flash
   hardware_pio

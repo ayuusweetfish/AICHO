@@ -1,4 +1,5 @@
 #include "pico/stdlib.h"
+#include "pico/multicore.h"
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
 #include "hardware/flash.h"
@@ -226,8 +227,6 @@ static inline void polyphonic_out(struct polyphonic_sampler *s, uint32_t out[20]
   }
 }
 
-struct polyphonic_sampler ps1;
-
 // ============ LED strip ============
 
 static dma_channel_config dma_ch4;
@@ -350,6 +349,8 @@ static const uint32_t organism_sounds[4][2][2] = {
 
 // ============ Entry point ============
 
+void core1_entry();
+
 int main()
 {
   // 132 MHz
@@ -375,15 +376,13 @@ int main()
   my_printf("flash_test_write() at %08x\n", &flash_test_write);
   // while (1) { }
 
-  polyphonic_init(&ps1);
+  multicore_launch_core1(core1_entry);
 
-/*
   tuh_init(BOARD_TUH_RHPORT);
   while (1) {
     tuh_task();
   }
   while (1) { }
-*/
 
 /*
   leds_init();
@@ -404,6 +403,14 @@ int main()
   }
 */
 
+}
+
+struct polyphonic_sampler ps1;
+
+void core1_entry()
+{
+  polyphonic_init(&ps1);
+
   audio_buf_init();
   audio_buf_resume();
 
@@ -412,18 +419,20 @@ int main()
     FILE_SIZE_Lorivox_In_bin);
 
   while (1) {
-    gpio_put(act_1, 1); sleep_ms(100);
-    gpio_put(act_1, 0); sleep_ms(200);
+    gpio_put(act_2, 1); sleep_ms(100);
+    gpio_put(act_2, 0); sleep_ms(200);
     static uint32_t i = 0;
     i++;
     my_printf("Hello, UART %u!%c", i, i % 2 == 0 ? '\n' : '\t');
+  /*
     if (i >= 10 && i % 10 == 0) {
-      // audio_buf_suspend();
+      audio_buf_suspend();
       gpio_put(act_2, 0);
     } else if (i >= 10 && i % 10 == 1) {
-      // audio_buf_resume();
+      audio_buf_resume();
       gpio_put(act_2, 1);
     }
+  */
     if (i % 10 == 3) {
       int org = ((i / 10 + 1) / 2) % 4;
       int dir = (i / 10 + 1) % 2;
