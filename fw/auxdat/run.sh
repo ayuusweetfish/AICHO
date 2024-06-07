@@ -12,5 +12,6 @@ done
 
 # ./gen zq3jTYLUbiEf.128.bin auxdat.gdbinit
 ./gen ${binfiles[@]} auxdat.gdbinit
+rm uqoa_conv gen ${binfiles[@]}
 
 # source auxdat/auxdat.gdbinit

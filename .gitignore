@@ -1,3 +1,4 @@
+/fw/auxdat/auxdat.gdbinit
 /fw/build/
 /fw/pico-sdk
 /hw/fp-info-cache
