@@ -146,16 +146,16 @@ struct sampler {
 
 static inline void sampler_decode(struct sampler *s, int16_t out[20])
 {
-  if (s->ptr % (258 * 8) == 0) {
-    uint64_t h = __builtin_bswap64(*(uint64_t *)AUXDAT(s->start + s->ptr));
-    uint64_t w = __builtin_bswap64(*(uint64_t *)AUXDAT(s->start + s->ptr + 8));
+  if (s->ptr % (256 * 8) == 0) {
+    uint64_t h = *(uint64_t *)AUXDAT(s->start + s->ptr);
+    uint64_t w = *(uint64_t *)AUXDAT(s->start + s->ptr + 8);
     for (int i = 0; i < 4; i++)
-      s->qoa_state.history[i] = (int16_t)(h >> (16 * (3 - i)));
+      s->qoa_state.history[i] = (int16_t)(h >> (16 * i));
     for (int i = 0; i < 4; i++)
-      s->qoa_state.weights[i] = (int16_t)(w >> (16 * (3 - i)));
+      s->qoa_state.weights[i] = (int16_t)(w >> (16 * i));
     s->ptr += 16;
   }
-  uint64_t slice = __builtin_bswap64(*(uint64_t *)AUXDAT(s->start + s->ptr));
+  uint64_t slice = *(uint64_t *)AUXDAT(s->start + s->ptr);
   qoa_decode_slice(&s->qoa_state, slice, out);
   if ((s->ptr += 8) >= s->len) s->ptr = 0;
 }
@@ -342,9 +342,10 @@ int main()
 
   my_printf("flash_erase_64k()  at %08x\n", &flash_erase_64k);
   my_printf("flash_test_write() at %08x\n", &flash_test_write);
+  // while (1) { }
 
 #define FILE_ADDR_zq3jTYLUbiEf_128_bin 0
-#define FILE_SIZE_zq3jTYLUbiEf_128_bin 1161008
+#define FILE_SIZE_zq3jTYLUbiEf_128_bin 1161072
   s1 = (struct sampler){
     .start = FILE_ADDR_zq3jTYLUbiEf_128_bin,
     .len = FILE_SIZE_zq3jTYLUbiEf_128_bin,
@@ -361,6 +362,7 @@ int main()
   while (1) { }
 */
 
+/*
   leds_init();
 
   uint8_t a[10][4][3] = {{{ 0 }}};
@@ -377,6 +379,7 @@ int main()
     gpio_put(act_1, 1); sleep_ms(100);
     gpio_put(act_1, 0); sleep_ms(400);
   }
+*/
 
   audio_buf_init();
   audio_buf_resume();
@@ -409,9 +412,6 @@ void refill_buffer(int16_t *buf)
 {
   assert(audio_buf_half_size % 20 == 0);
   for (int i = 0; i < audio_buf_half_size; i += 20) {
-    // sampler_decode(&s1, buf + i);
-    // for (int j = 0; j < 20; j++)
-    //   buf[i + j] >>= 7;
     polyphonic_out(&ps1, buf + i);
   }
 }
