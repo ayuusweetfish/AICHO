@@ -160,8 +160,6 @@ static inline void sampler_decode(struct sampler *s, int16_t out[20])
   if ((s->ptr += 8) >= s->len) s->ptr = 0;
 }
 
-struct sampler s1;
-
 #define POLYPHONY 8
 struct polyphonic_sampler {
   critical_section_t crit;
@@ -317,6 +315,36 @@ void leds_blast(uint8_t a[][4][3], int n)
   dma_channel_set_trans_count(4, n * 3, true);
 }
 
+// ============ Auxiliary data ============
+
+#define FILE_ADDR_Lorivox_In_bin   0
+#define FILE_SIZE_Lorivox_In_bin   154816
+#define FILE_ADDR_Lorivox_Ex_bin   154816
+#define FILE_SIZE_Lorivox_Ex_bin   154816
+#define FILE_ADDR_Lumisonic_In_bin 309632
+#define FILE_SIZE_Lumisonic_In_bin 154816
+#define FILE_ADDR_Lumisonic_Ex_bin 464448
+#define FILE_SIZE_Lumisonic_Ex_bin 154816
+#define FILE_ADDR_Harmonia_In_bin  619264
+#define FILE_SIZE_Harmonia_In_bin  154816
+#define FILE_ADDR_Harmonia_Ex_bin  774080
+#define FILE_SIZE_Harmonia_Ex_bin  154816
+#define FILE_ADDR_Titanus_In_bin   928896
+#define FILE_SIZE_Titanus_In_bin   154816
+#define FILE_ADDR_Titanus_Ex_bin   1083712
+#define FILE_SIZE_Titanus_Ex_bin   154816
+// [index][inhale/exhale][addr/size]
+static const uint32_t organism_sounds[4][2][2] = {
+  {{FILE_ADDR_Lorivox_In_bin, FILE_SIZE_Lorivox_In_bin},
+   {FILE_ADDR_Lorivox_Ex_bin, FILE_SIZE_Lorivox_Ex_bin}},
+  {{FILE_ADDR_Lumisonic_In_bin, FILE_SIZE_Lumisonic_In_bin},
+   {FILE_ADDR_Lumisonic_Ex_bin, FILE_SIZE_Lumisonic_Ex_bin}},
+  {{FILE_ADDR_Harmonia_In_bin, FILE_SIZE_Harmonia_In_bin},
+   {FILE_ADDR_Harmonia_Ex_bin, FILE_SIZE_Harmonia_Ex_bin}},
+  {{FILE_ADDR_Titanus_In_bin, FILE_SIZE_Titanus_In_bin},
+   {FILE_ADDR_Titanus_Ex_bin, FILE_SIZE_Titanus_Ex_bin}},
+};
+
 // ============ Entry point ============
 
 int main()
@@ -343,14 +371,6 @@ int main()
   my_printf("flash_erase_64k()  at %08x\n", &flash_erase_64k);
   my_printf("flash_test_write() at %08x\n", &flash_test_write);
   // while (1) { }
-
-#define FILE_ADDR_zq3jTYLUbiEf_128_bin 0
-#define FILE_SIZE_zq3jTYLUbiEf_128_bin 1161072
-  s1 = (struct sampler){
-    .start = FILE_ADDR_zq3jTYLUbiEf_128_bin,
-    .len = FILE_SIZE_zq3jTYLUbiEf_128_bin,
-    .ptr = 0,
-  };
 
   polyphonic_init(&ps1);
 
@@ -385,26 +405,29 @@ int main()
   audio_buf_resume();
 
   polyphonic_trigger(&ps1,
-    FILE_ADDR_zq3jTYLUbiEf_128_bin,
-    FILE_SIZE_zq3jTYLUbiEf_128_bin);
+    FILE_ADDR_Lorivox_In_bin,
+    FILE_SIZE_Lorivox_In_bin);
 
   while (1) {
     gpio_put(act_1, 1); sleep_ms(100);
-    gpio_put(act_1, 0); sleep_ms(400);
+    gpio_put(act_1, 0); sleep_ms(200);
     static uint32_t i = 0;
     i++;
     my_printf("Hello, UART %u!%c", i, i % 2 == 0 ? '\n' : '\t');
     if (i >= 10 && i % 10 == 0) {
-      audio_buf_suspend();
+      // audio_buf_suspend();
       gpio_put(act_2, 0);
     } else if (i >= 10 && i % 10 == 1) {
-      audio_buf_resume();
+      // audio_buf_resume();
       gpio_put(act_2, 1);
     }
-    if (i % 10 == 3)
+    if (i % 10 == 3) {
+      int org = ((i / 10 + 1) / 2) % 4;
+      int dir = (i / 10 + 1) % 2;
       polyphonic_trigger(&ps1,
-        FILE_ADDR_zq3jTYLUbiEf_128_bin,
-        FILE_SIZE_zq3jTYLUbiEf_128_bin);
+        organism_sounds[org][dir][0],
+        organism_sounds[org][dir][1]);
+    }
   }
 }
 
