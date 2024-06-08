@@ -1,3 +1,5 @@
+// Board revision: 1a
+
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "hardware/clocks.h"
@@ -347,6 +349,40 @@ static const uint32_t organism_sounds[4][2][2] = {
    {FILE_ADDR_Titanus_Ex_bin, FILE_SIZE_Titanus_Ex_bin}},
 };
 
+// ============ Solenoid valves / pumps output ============
+
+static const struct {
+  uint8_t solenoid, pump_inflate, pump_drain;
+} air_outputs[4] = {
+  {.solenoid = 10, .pump_inflate = 11, .pump_drain = 12},
+  {.solenoid = 10, .pump_inflate = 11, .pump_drain = 12},
+  {.solenoid = 10, .pump_inflate = 11, .pump_drain = 12},
+  {.solenoid = 27, .pump_inflate = 28, .pump_drain = 29},
+};
+
+static inline void pump_init()
+{
+  // TODO: Initialise all organisms with the updated board (Rev. 2)
+  for (int i = 3; i < 4; i++) {
+    uint8_t pin;
+    pin = air_outputs[i].solenoid;
+    gpio_init(pin); gpio_set_dir(pin, GPIO_OUT); gpio_put(pin, 0);
+    pin = air_outputs[i].pump_inflate;
+    gpio_init(pin); gpio_set_dir(pin, GPIO_OUT); gpio_put(pin, 0);
+    pin = air_outputs[i].pump_drain;
+    gpio_init(pin); gpio_set_dir(pin, GPIO_OUT); gpio_put(pin, 0);
+  }
+}
+
+static inline void pump(int org_index, int dir)
+{
+  // Solenoid on -> air can get out
+  gpio_put(air_outputs[org_index].solenoid, dir != +1);
+  sleep_ms(100);
+  gpio_put(air_outputs[org_index].pump_inflate, dir == +1);
+  gpio_put(air_outputs[org_index].pump_drain, dir == -1);
+}
+
 // ============ Entry point ============
 
 void core1_entry();
@@ -377,6 +413,15 @@ int main()
   // while (1) { }
 
   multicore_launch_core1(core1_entry);
+
+  pump_init();
+
+  while (1) {
+    pump(3, -1); gpio_put(act_1, 0); sleep_ms(1800);
+    pump(3,  0); gpio_put(act_1, 0); sleep_ms(500);
+    pump(3, +1); gpio_put(act_1, 1); sleep_ms(1800);
+    pump(3,  0); gpio_put(act_1, 0); sleep_ms(500);
+  }
 
   tuh_init(BOARD_TUH_RHPORT);
   while (1) {
