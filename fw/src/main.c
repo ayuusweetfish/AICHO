@@ -360,10 +360,17 @@ static const uint32_t organism_sounds[4][2][2] = {
 static const struct {
   uint8_t solenoid, pump_inflate, pump_drain;
 } air_outputs[4] = {
+#if BOARD_REV == 1
+  {.solenoid =  5, .pump_inflate =  6, .pump_drain =  7},
+  {.solenoid =  8, .pump_inflate =  9, .pump_drain = 10},
+  {.solenoid = 18, .pump_inflate = 19, .pump_drain = 20},
+  {.solenoid = 27, .pump_inflate = 28, .pump_drain = 29},
+#elif BOARD_REV == 2
   {.solenoid = 10, .pump_inflate = 11, .pump_drain = 12},
   {.solenoid = 13, .pump_inflate = 14, .pump_drain = 15},
   {.solenoid = 22, .pump_inflate = 23, .pump_drain = 24},
   {.solenoid = 27, .pump_inflate = 28, .pump_drain = 29},
+#endif
 };
 
 static inline void pump_init()
