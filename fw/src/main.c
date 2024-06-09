@@ -1,4 +1,4 @@
-// Board revision: 2
+#include "main.h"
 
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -11,16 +11,13 @@
 
 #include "tusb.h"
 
-#include "i2s.pio.h"
+#include "i2s_out.pio.h"
 #include "ws2812.pio.h"
 
 #define uQOA_IMPL
 #include "uqoa.h"
 
 // ============ Debug output ============
-
-#define act_1 24
-#define act_2 25
 
 static inline void my_putc(uint8_t c)
 {
@@ -74,9 +71,14 @@ static dma_channel_config dma_ch0, dma_ch1, dma_ch2, dma_ch3;
 
 void audio_buf_init()
 {
-  uint offset = pio_add_program(pio0, &i2s_program);
   uint sm = pio_claim_unused_sm(pio0, true);
-  i2s_program_init(pio0, sm, offset, 1, 2);
+#if BOARD_REV == 1
+  uint offset = pio_add_program(pio0, &i2s_out_program);
+  i2s_out_program_init(pio0, sm, offset, 2, 3);
+#elif BOARD_REV == 2
+  uint offset = pio_add_program(pio0, &i2s_out_invclk_program);
+  i2s_out_program_init(pio0, sm, offset, 1, 2);
+#endif
 
   pio_sm_set_enabled(pio0, sm, true);
 
@@ -237,7 +239,11 @@ void leds_init()
 {
   uint offset = pio_add_program(pio1, &ws2812_program);
   uint sm = pio_claim_unused_sm(pio1, true);
+#if BOARD_REV == 1
+  ws2812_program_init(pio1, sm, offset, 11);
+#elif BOARD_REV == 2
   ws2812_program_init(pio1, sm, offset, 18);
+#endif
 
   pio_sm_set_enabled(pio1, sm, true);
 
@@ -355,15 +361,14 @@ static const struct {
   uint8_t solenoid, pump_inflate, pump_drain;
 } air_outputs[4] = {
   {.solenoid = 10, .pump_inflate = 11, .pump_drain = 12},
-  {.solenoid = 10, .pump_inflate = 11, .pump_drain = 12},
-  {.solenoid = 10, .pump_inflate = 11, .pump_drain = 12},
+  {.solenoid = 13, .pump_inflate = 14, .pump_drain = 15},
+  {.solenoid = 22, .pump_inflate = 23, .pump_drain = 24},
   {.solenoid = 27, .pump_inflate = 28, .pump_drain = 29},
 };
 
 static inline void pump_init()
 {
-  // TODO: Initialise all organisms with the updated board (Rev. 2)
-  for (int i = 3; i < 4; i++) {
+  for (int i = 0; i < 4; i++) {
     uint8_t pin;
     pin = air_outputs[i].solenoid;
     gpio_init(pin); gpio_set_dir(pin, GPIO_OUT); gpio_put(pin, 0);

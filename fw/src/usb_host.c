@@ -1,7 +1,8 @@
+#include "main.h"
+
 #include "pico/stdlib.h"
 #include "tusb.h"
 
-int my_printf(const char *restrict fmt, ...);
 #define printf my_printf
 
 void tuh_mount_cb(uint8_t dev_addr)
@@ -179,7 +180,6 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
     else if (report->keycode[i] == HID_KEY_W) org_key[1] = true;
     else if (report->keycode[i] == HID_KEY_E) org_key[2] = true;
     else if (report->keycode[i] == HID_KEY_R) org_key[3] = true;
-#define act_1 24
   gpio_put(act_1, org_key[0] || org_key[1] || org_key[2] || org_key[3]);
 
   prev_report = *report;
