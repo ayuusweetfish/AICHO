@@ -1,4 +1,4 @@
-// Board revision: 1a
+// Board revision: 2
 
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -19,8 +19,8 @@
 
 // ============ Debug output ============
 
-#define act_1 22
-#define act_2 23
+#define act_1 24
+#define act_2 25
 
 static inline void my_putc(uint8_t c)
 {
@@ -76,7 +76,7 @@ void audio_buf_init()
 {
   uint offset = pio_add_program(pio0, &i2s_program);
   uint sm = pio_claim_unused_sm(pio0, true);
-  i2s_program_init(pio0, sm, offset, 2, 3);
+  i2s_program_init(pio0, sm, offset, 1, 2);
 
   pio_sm_set_enabled(pio0, sm, true);
 
@@ -237,7 +237,7 @@ void leds_init()
 {
   uint offset = pio_add_program(pio1, &ws2812_program);
   uint sm = pio_claim_unused_sm(pio1, true);
-  ws2812_program_init(pio1, sm, offset, 11);
+  ws2812_program_init(pio1, sm, offset, 18);
 
   pio_sm_set_enabled(pio1, sm, true);
 
@@ -414,6 +414,7 @@ int main()
 
   multicore_launch_core1(core1_entry);
 
+/*
   pump_init();
 
   while (1) {
@@ -428,8 +429,8 @@ int main()
     tuh_task();
   }
   while (1) { }
+*/
 
-/*
   leds_init();
 
   uint8_t a[10][4][3] = {{{ 0 }}};
@@ -446,7 +447,6 @@ int main()
     gpio_put(act_1, 1); sleep_ms(100);
     gpio_put(act_1, 0); sleep_ms(400);
   }
-*/
 
 }
 
