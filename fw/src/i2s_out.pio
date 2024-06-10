@@ -65,7 +65,7 @@ public entry_point:
 % c-sdk {
 
 static inline void i2s_out_program_init(PIO pio, uint sm, const struct pio_program *program, uint data_pin, uint clock_pin_base) {
-  uint offset = pio_add_program(pio0, program);
+  uint offset = pio_add_program(pio, program);
 
   // This assumes that programs `i2s_out` and `i2s_out_swapclk` do not differ other than side-set values,
   // i.e., default configuration and offsets are exactly the same

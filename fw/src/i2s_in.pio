@@ -16,7 +16,7 @@ static inline void i2s_in_mck_out_program_init(PIO pio, uint sm, uint out_pin) {
 
   // 5 = 132 MHz / 13.2 MHz / 2
   sm_config_set_clkdiv_int_frac(&sm_config, 5, 0);
-  // Resulting sample rate is 51.5625 kHz, with
+  // Resulting sample rate is 13.2 MHz / 256 = 51.5625 kHz, with
   // each sample frame comprising two 32b channels
 
   pio_sm_init(pio, sm, offset, &sm_config);
@@ -45,9 +45,7 @@ static inline void i2s_in_program_init(PIO pio, uint sm, uint in_pin_base) {
   sm_config_set_in_pins(&sm_config, in_pin_base);
   sm_config_set_in_shift(&sm_config, /* shift_right */ false, /* autopush */ true, 32);
   sm_config_set_fifo_join(&sm_config, PIO_FIFO_JOIN_RX);
-  // pio_gpio_init(pio, in_pin_base + 0);
-  // pio_gpio_init(pio, in_pin_base + 1);
-  // pio_gpio_init(pio, in_pin_base + 2);
+  // PIO can read all pins, so no need for `pio_gpio_init()`
   pio_sm_set_consecutive_pindirs(pio, sm, in_pin_base, 3, /* is_out */ false);
 
   sm_config_set_clkdiv_int_frac(&sm_config, 10, 0);

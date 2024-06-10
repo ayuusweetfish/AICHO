@@ -9,7 +9,7 @@
 
 % c-sdk {
 static inline void ws2812_program_init(PIO pio, uint sm, uint out_pin_base) {
-  uint offset = pio_add_program(pio1, &ws2812_program);
+  uint offset = pio_add_program(pio, &ws2812_program);
   pio_sm_config sm_config = ws2812_program_get_default_config(offset);
   sm_config_set_set_pins(&sm_config, out_pin_base, 4);
   sm_config_set_out_pins(&sm_config, out_pin_base, 4);
