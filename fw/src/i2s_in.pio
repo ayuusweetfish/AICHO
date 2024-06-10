@@ -32,6 +32,7 @@ static inline void i2s_in_mck_out_program_init(PIO pio, uint sm, uint out_pin) {
 .wrap_target
   wait 1 pin 1
   in pins, 1
+  wait 0 pin 1
 .wrap
 
 % c-sdk {
