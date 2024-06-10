@@ -43,7 +43,7 @@ public entry_point:
     set x, 14         side 0b11
 
 
-.program i2s_out_invclk
+.program i2s_out_swapclk
 .side_set 2
 
                     ;        /--- BCLK
@@ -64,31 +64,33 @@ public entry_point:
 
 % c-sdk {
 
-static inline void i2s_out_program_init(PIO pio, uint sm, uint offset, uint data_pin, uint clock_pin_base) {
-    // This assumes that programs `i2s_out` and `i2s_out_invclk` do not differ other than side-set values,
-    // i.e., default configuration and offsets are exactly the same
-    pio_sm_config sm_config = i2s_out_program_get_default_config(offset);
-    
-    sm_config_set_set_pins(&sm_config, data_pin, 1);
-    sm_config_set_out_pins(&sm_config, data_pin, 1);
-    sm_config_set_sideset_pins(&sm_config, clock_pin_base);
-    sm_config_set_out_shift(&sm_config, false, true, 32);
-    sm_config_set_fifo_join(&sm_config, PIO_FIFO_JOIN_TX);
+static inline void i2s_out_program_init(PIO pio, uint sm, const struct pio_program *program, uint data_pin, uint clock_pin_base) {
+  uint offset = pio_add_program(pio0, program);
 
-    // 42.96875 = 132 MHz / 48kHz / 32 / 2
-    sm_config_set_clkdiv_int_frac(&sm_config, 42, 248);
+  // This assumes that programs `i2s_out` and `i2s_out_swapclk` do not differ other than side-set values,
+  // i.e., default configuration and offsets are exactly the same
+  pio_sm_config sm_config = i2s_out_program_get_default_config(offset);
+  
+  sm_config_set_set_pins(&sm_config, data_pin, 1);
+  sm_config_set_out_pins(&sm_config, data_pin, 1);
+  sm_config_set_sideset_pins(&sm_config, clock_pin_base);
+  sm_config_set_out_shift(&sm_config, false, true, 32);
+  sm_config_set_fifo_join(&sm_config, PIO_FIFO_JOIN_TX);
 
-    pio_sm_init(pio, sm, offset, &sm_config);
+  // 42.96875 = 132 MHz / 48kHz / 32 / 2
+  sm_config_set_clkdiv_int_frac(&sm_config, 42, 248);
 
-    pio_gpio_init(pio, data_pin);
-    pio_gpio_init(pio, clock_pin_base);
-    pio_gpio_init(pio, clock_pin_base + 1);
+  pio_sm_init(pio, sm, offset, &sm_config);
 
-    uint pin_mask = (1u << data_pin) | (3u << clock_pin_base);
-    pio_sm_set_pindirs_with_mask(pio, sm, pin_mask, pin_mask);
-    pio_sm_set_pins(pio, sm, 0); // clear pins
+  pio_gpio_init(pio, data_pin);
+  pio_gpio_init(pio, clock_pin_base);
+  pio_gpio_init(pio, clock_pin_base + 1);
 
-    pio_sm_exec(pio, sm, pio_encode_jmp(offset + i2s_out_offset_entry_point));
+  uint pin_mask = (1u << data_pin) | (3u << clock_pin_base);
+  pio_sm_set_pindirs_with_mask(pio, sm, pin_mask, pin_mask);
+  pio_sm_set_pins(pio, sm, 0); // clear pins
+
+  pio_sm_exec(pio, sm, pio_encode_jmp(offset + i2s_out_offset_entry_point));
 }
 
 %}

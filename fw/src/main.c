@@ -74,11 +74,9 @@ void audio_buf_init()
 {
   uint sm = pio_claim_unused_sm(pio0, true);
 #if BOARD_REV == 1
-  uint offset = pio_add_program(pio0, &i2s_out_program);
-  i2s_out_program_init(pio0, sm, offset, 2, 3);
+  i2s_out_program_init(pio0, sm, &i2s_out_program, 2, 3);
 #elif BOARD_REV == 2
-  uint offset = pio_add_program(pio0, &i2s_out_invclk_program);
-  i2s_out_program_init(pio0, sm, offset, 1, 2);
+  i2s_out_program_init(pio0, sm, &i2s_out_swapclk_program, 1, 2);
 #endif
 
   pio_sm_set_enabled(pio0, sm, true);
@@ -269,12 +267,11 @@ static dma_channel_config dma_ch4;
 
 void leds_init()
 {
-  uint offset = pio_add_program(pio1, &ws2812_program);
   uint sm = pio_claim_unused_sm(pio1, true);
 #if BOARD_REV == 1
-  ws2812_program_init(pio1, sm, offset, 11);
+  ws2812_program_init(pio1, sm, 11);
 #elif BOARD_REV == 2
-  ws2812_program_init(pio1, sm, offset, 18);
+  ws2812_program_init(pio1, sm, 18);
 #endif
 
   pio_sm_set_enabled(pio1, sm, true);
