@@ -12,13 +12,43 @@ static inline void i2s_in_mck_out_program_init(PIO pio, uint sm, uint out_pin) {
 
   sm_config_set_set_pins(&sm_config, out_pin, 1);
   pio_gpio_init(pio, out_pin);
-  // 1 pin starting from `out_pin`, direction is output
-  pio_sm_set_consecutive_pindirs(pio, sm, out_pin, 1, true);
+  pio_sm_set_consecutive_pindirs(pio, sm, out_pin, 1, /* is_out */ true);
 
   // 5 = 132 MHz / 13.2 MHz / 2
   sm_config_set_clkdiv_int_frac(&sm_config, 5, 0);
 
   pio_sm_init(pio, sm, offset, &sm_config);
   pio_sm_set_pins(pio, sm, 1);
+}
+%}
+
+.program i2s_in
+
+; Left-justified — Ref. PCM1808 datasheet (SLES177B) p. 17, Fig. 24
+; Input pins: SD, CK (BCK), WS (LRCK)
+
+  wait 0 pin 2
+  wait 1 pin 2
+.wrap_target
+  wait 1 pin 1
+  in pins, 1
+.wrap
+
+% c-sdk {
+static inline void i2s_in_program_init(PIO pio, uint sm, uint in_pin_base) {
+  uint offset = pio_add_program(pio, &i2s_in_program);
+  pio_sm_config sm_config = i2s_in_program_get_default_config(offset);
+
+  sm_config_set_in_pins(&sm_config, in_pin_base);
+  sm_config_set_in_shift(&sm_config, /* shift_right */ false, /* autopush */ true, 32);
+  sm_config_set_fifo_join(&sm_config, PIO_FIFO_JOIN_RX);
+  pio_gpio_init(pio, in_pin_base + 0);
+  pio_gpio_init(pio, in_pin_base + 1);
+  pio_gpio_init(pio, in_pin_base + 2);
+  pio_sm_set_consecutive_pindirs(pio, sm, in_pin_base, 3, /* is_out */ false);
+
+  sm_config_set_clkdiv_int_frac(&sm_config, 10, 0);
+
+  pio_sm_init(pio, sm, offset, &sm_config);
 }
 %}

@@ -99,8 +99,8 @@ void audio_buf_init()
   dma_channel_set_irq0_enabled(1, true);
   dma_channel_configure(1, &dma_ch1, &pio0->txf[sm], audio_buf + audio_buf_half_size, audio_buf_half_size, false);
 
-  irq_set_exclusive_handler(11, dma_irq0_handler);
-  irq_set_enabled(11, true);
+  irq_set_exclusive_handler(DMA_IRQ_0, dma_irq0_handler);
+  irq_set_enabled(DMA_IRQ_0, true);
 
   static uint32_t addr0 = (uint32_t)&audio_buf[0];
   static uint32_t addr1 = (uint32_t)&audio_buf[audio_buf_half_size];
@@ -142,18 +142,23 @@ void dma_irq0_handler()
 
 // ============ Audio input buffer ============
 
+static uint32_t audio_in_buf[2400];
+static const uint32_t audio_in_buf_half_size = (sizeof audio_in_buf) / (sizeof audio_in_buf[0]) / 2;
+
+static inline void consume_buffer(const uint32_t *buf);
+static void dma_irq1_handler();
+
+static dma_channel_config dma_ch8, dma_ch9, dma_ch10, dma_ch11;
+
 void audio_in_init()
 {
 #if BOARD_REV == 2
-  uint sm = pio_claim_unused_sm(pio0, true);
-  i2s_in_mck_out_program_init(pio0, sm, 7);
-  pio_sm_set_enabled(pio0, sm, true);
+  uint sm_mck = pio_claim_unused_sm(pio0, true);
+  i2s_in_mck_out_program_init(pio0, sm_mck, 7);
+  pio_sm_set_enabled(pio0, sm_mck, true);
 
   gpio_init(8); gpio_set_dir(8, GPIO_OUT);
   gpio_put(8, 1);
-
-  // gpio_init(7); gpio_set_dir(7, GPIO_OUT);
-  // gpio_put(7, 1);
 
 /*
   gpio_init(4); gpio_set_dir(4, GPIO_IN);
@@ -168,7 +173,85 @@ void audio_in_init()
     gpio_put(act_1, gpio_get(4));
   }
 */
+
+  sleep_ms(10);
+  uint sm_in = pio_claim_unused_sm(pio0, true);
+  i2s_in_program_init(pio0, sm_in, 4);
+  pio_sm_set_enabled(pio0, sm_in, true);
+
+  while (0) {
+    uint32_t value;
+    // 51.5625 kHz, each sample frame has two 32b channels
+    for (int i = 0; i < 103125; i++)
+      value = pio_sm_get_blocking(pio0, sm_in);
+    static int parity = 0;
+    gpio_put(act_1, parity ^= 1);
+  }
+
+  dma_ch8 = dma_channel_get_default_config(8);
+  channel_config_set_read_increment(&dma_ch8, false);
+  channel_config_set_write_increment(&dma_ch8, true);
+  channel_config_set_transfer_data_size(&dma_ch8, DMA_SIZE_32);
+  channel_config_set_dreq(&dma_ch8, pio_get_dreq(pio0, sm_in, /* is_tx */ false));
+  channel_config_set_chain_to(&dma_ch8, 10);
+  dma_channel_set_irq1_enabled(8, true);
+  dma_channel_configure(8, &dma_ch8, audio_in_buf, &pio0->rxf[sm_in], audio_in_buf_half_size, false);
+
+  dma_ch9 = dma_channel_get_default_config(9);
+  channel_config_set_read_increment(&dma_ch9, false);
+  channel_config_set_write_increment(&dma_ch9, true);
+  channel_config_set_transfer_data_size(&dma_ch9, DMA_SIZE_32);
+  channel_config_set_dreq(&dma_ch9, pio_get_dreq(pio0, sm_in, /* is_tx */ false));
+  channel_config_set_chain_to(&dma_ch9, 11);
+  dma_channel_set_irq1_enabled(9, true);
+  dma_channel_configure(9, &dma_ch9, audio_in_buf + audio_in_buf_half_size, &pio0->rxf[sm_in], audio_in_buf_half_size, false);
+
+  irq_set_exclusive_handler(DMA_IRQ_1, dma_irq1_handler);
+  irq_set_enabled(DMA_IRQ_1, true);
+
+  static uint32_t addr0 = (uint32_t)&audio_in_buf[0];
+  static uint32_t addr1 = (uint32_t)&audio_in_buf[audio_in_buf_half_size];
+
+  dma_ch10 = dma_channel_get_default_config(10);
+  channel_config_set_read_increment(&dma_ch10, false);
+  channel_config_set_write_increment(&dma_ch10, false);
+  dma_channel_configure(10, &dma_ch10, &dma_hw->ch[8].al2_write_addr_trig, &addr1, 1, false);
+
+  dma_ch11 = dma_channel_get_default_config(11);
+  channel_config_set_read_increment(&dma_ch11, false);
+  channel_config_set_write_increment(&dma_ch11, false);
+  dma_channel_configure(11, &dma_ch11, &dma_hw->ch[9].al2_write_addr_trig, &addr0, 1, false);
 #endif
+}
+
+void consume_buffer(const uint32_t *buf)
+{
+  gpio_put(act_1, 1);
+  // my_printf("consume !\n");
+}
+
+void audio_in_suspend()
+{
+  channel_config_set_enable(&dma_ch8, false);
+  dma_channel_set_config(8, &dma_ch8, false);
+}
+
+void audio_in_resume()
+{
+  channel_config_set_enable(&dma_ch8, true);
+  dma_channel_set_write_addr(8, audio_in_buf, false);
+  dma_channel_set_config(8, &dma_ch8, true);
+}
+
+void dma_irq1_handler()
+{
+  if (dma_channel_get_irq1_status(8)) {
+    dma_channel_acknowledge_irq1(8);
+    consume_buffer(audio_in_buf);
+  } else {
+    dma_channel_acknowledge_irq1(9);
+    consume_buffer(audio_in_buf + audio_in_buf_half_size);
+  }
 }
 
 // ============ Sampler ============
@@ -457,6 +540,7 @@ int main()
   multicore_launch_core1(core1_entry);
 
   audio_in_init();
+  audio_in_resume();
 
 /*
   pump_init();
@@ -492,8 +576,9 @@ int main()
     for (int i = 5; i < 20; i += 2)
       a[i][0][1] = 0x10;
     leds_blast(a, 20);
-    gpio_put(act_1, 1); sleep_ms(100);
-    gpio_put(act_1, 0); sleep_ms(400);
+    // gpio_put(act_1, 1); sleep_ms(100);
+    // gpio_put(act_1, 0); sleep_ms(400);
+    sleep_ms(500);
   }
 
 }
