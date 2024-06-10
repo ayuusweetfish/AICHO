@@ -13,6 +13,7 @@
 
 #include "i2s_out.pio.h"
 #include "ws2812.pio.h"
+#include "i2s_in.pio.h"
 
 #define uQOA_IMPL
 #include "uqoa.h"
@@ -139,6 +140,35 @@ void dma_irq0_handler()
     dma_channel_acknowledge_irq0(1);
     refill_buffer(audio_buf + audio_buf_half_size);
   }
+}
+
+// ============ Audio input buffer ============
+
+void audio_in_init()
+{
+#if BOARD_REV == 2
+  uint sm = pio_claim_unused_sm(pio0, true);
+  i2s_in_mck_out_program_init(pio0, sm, 7);
+  pio_sm_set_enabled(pio0, sm, true);
+
+  gpio_init(8); gpio_set_dir(8, GPIO_OUT);
+  gpio_put(8, 1);
+
+  // gpio_init(7); gpio_set_dir(7, GPIO_OUT);
+  // gpio_put(7, 1);
+
+  gpio_init(4); gpio_set_dir(4, GPIO_IN);
+  gpio_init(5); gpio_set_dir(5, GPIO_IN);
+  gpio_init(6); gpio_set_dir(6, GPIO_IN);
+
+  while (1) {
+    // gpio_put(7, 1);
+    // my_printf("read CK = %d, WS = %d\n", gpio_get(5), gpio_get(6));
+    // gpio_put(act_1, gpio_get(5) | gpio_get(6));
+    // gpio_put(7, 0);
+    gpio_put(act_1, gpio_get(4));
+  }
+#endif
 }
 
 // ============ Sampler ============
@@ -425,6 +455,8 @@ int main()
   // while (1) { }
 
   multicore_launch_core1(core1_entry);
+
+  audio_in_init();
 
 /*
   pump_init();

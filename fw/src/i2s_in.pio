@@ -1,0 +1,24 @@
+.program i2s_in_mck_out
+
+.wrap_target
+  set pins, 1
+  set pins, 0
+.wrap
+
+% c-sdk {
+static inline void i2s_in_mck_out_program_init(PIO pio, uint sm, uint out_pin) {
+  uint offset = pio_add_program(pio, &i2s_in_mck_out_program);
+  pio_sm_config sm_config = i2s_in_mck_out_program_get_default_config(offset);
+
+  sm_config_set_set_pins(&sm_config, out_pin, 1);
+  pio_gpio_init(pio, out_pin);
+  // 1 pin starting from `out_pin`, direction is output
+  pio_sm_set_consecutive_pindirs(pio, sm, out_pin, 1, true);
+
+  // 5 = 132 MHz / 13.2 MHz / 2
+  sm_config_set_clkdiv_int_frac(&sm_config, 5, 0);
+
+  pio_sm_init(pio, sm, offset, &sm_config);
+  pio_sm_set_pins(pio, sm, 1);
+}
+%}
