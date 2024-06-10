@@ -157,6 +157,7 @@ void audio_in_init()
   // gpio_init(7); gpio_set_dir(7, GPIO_OUT);
   // gpio_put(7, 1);
 
+/*
   gpio_init(4); gpio_set_dir(4, GPIO_IN);
   gpio_init(5); gpio_set_dir(5, GPIO_IN);
   gpio_init(6); gpio_set_dir(6, GPIO_IN);
@@ -168,6 +169,7 @@ void audio_in_init()
     // gpio_put(7, 0);
     gpio_put(act_1, gpio_get(4));
   }
+*/
 #endif
 }
 
@@ -467,23 +469,25 @@ int main()
     pump(3, +1); gpio_put(act_1, 1); sleep_ms(1800);
     pump(3,  0); gpio_put(act_1, 0); sleep_ms(500);
   }
+*/
 
   tuh_init(BOARD_TUH_RHPORT);
   while (1) {
     tuh_task();
   }
   while (1) { }
-*/
 
   leds_init();
 
   uint8_t a[10][4][3] = {{{ 0 }}};
   while (1) {
+    /*
     if (a[0][0][1] > 0) {
       if (++a[0][0][1] >= 10) a[0][0][1] = 0;
     } else {
       if (++a[0][0][0] >= 10) { a[0][0][0] = 0; a[0][0][1] = 1; }
     }
+    */
     a[1][0][0] = 0x33; a[1][0][1] = 0x01; a[1][0][2] = 0x60;
     a[2][0][0] = 0x33; a[2][0][1] = 0x01; a[2][0][2] = 0x60;
     a[3][0][0] = 0x33; a[3][0][1] = 0x01; a[3][0][2] = 0x60;
