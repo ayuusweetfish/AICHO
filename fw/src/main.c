@@ -215,22 +215,22 @@ void audio_in_init()
   dma_ch10 = dma_channel_get_default_config(10);
   channel_config_set_read_increment(&dma_ch10, false);
   channel_config_set_write_increment(&dma_ch10, false);
-  dma_channel_configure(10, &dma_ch10, &dma_hw->ch[8].al2_write_addr_trig, &addr1, 1, false);
+  dma_channel_configure(10, &dma_ch10, &dma_hw->ch[9].al2_write_addr_trig, &addr1, 1, false);
 
   dma_ch11 = dma_channel_get_default_config(11);
   channel_config_set_read_increment(&dma_ch11, false);
   channel_config_set_write_increment(&dma_ch11, false);
-  dma_channel_configure(11, &dma_ch11, &dma_hw->ch[9].al2_write_addr_trig, &addr0, 1, false);
+  dma_channel_configure(11, &dma_ch11, &dma_hw->ch[8].al2_write_addr_trig, &addr0, 1, false);
 #endif
 }
 
 void consume_buffer(const int32_t *buf)
 {
   static int count = 0;
-  if (++count == 103125 / audio_in_buf_half_size) {
+  if (1 || ++count == 103125 / audio_in_buf_half_size) {
     count = 0;
     static int parity = 0;
-    gpio_put(act_1, parity ^= 1);
+    // gpio_put(act_1, parity ^= 1);
     // my_printf("consume %08x!\n", buf[0]);
 
     int32_t min = INT32_MAX;
@@ -243,16 +243,21 @@ void consume_buffer(const int32_t *buf)
     uint32_t diff = max - min;
 
     my_printf("consume pin in %d, max %08x, diff %u\n", gpio_get(4), max, diff);
+    gpio_put(act_1, diff >= 295000000);
 
+/*
+  gpio_init(4); gpio_set_dir(4, GPIO_IN);
   while (1) {
     if (gpio_get(4)) {
       gpio_put(act_1, 1);
-      my_printf("pin in 1\n");
+      // my_printf("pin in 1\n");
     } else {
       gpio_put(act_1, 0);
     }
-    sleep_ms(10);
+    // sleep_ms(10);
+    for (int i = 0; i < 1000000; i++) asm volatile ("");
   }
+*/
   }
 }
 
@@ -563,6 +568,8 @@ int main()
   my_printf("flash_test_write() at %08x\n", &flash_test_write);
   // while (1) { }
 
+  multicore_reset_core1();
+  multicore_fifo_pop_blocking();
   multicore_launch_core1(core1_entry);
 
   audio_in_init();
