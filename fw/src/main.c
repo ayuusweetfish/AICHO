@@ -226,38 +226,20 @@ void audio_in_init()
 
 void consume_buffer(const int32_t *buf)
 {
-  static int count = 0;
-  if (1 || ++count == 103125 / audio_in_buf_half_size) {
-    count = 0;
-    static int parity = 0;
-    // gpio_put(act_1, parity ^= 1);
-    // my_printf("consume %08x!\n", buf[0]);
-
-    int32_t min = INT32_MAX;
-    int32_t max = INT32_MIN;
-    for (int i = 0; i < audio_in_buf_half_size; i++) {
-      int32_t value = buf[i] & 0xffffff00;
-      if (value > max) max = value;
-      if (value < min) min = value;
-    }
-    uint32_t diff = max - min;
-
-    my_printf("consume pin in %d, max %08x, diff %u\n", gpio_get(4), max, diff);
-    gpio_put(act_1, diff >= 295000000);
-
-/*
-  gpio_init(4); gpio_set_dir(4, GPIO_IN);
-  while (1) {
-    if (gpio_get(4)) {
-      gpio_put(act_1, 1);
-      // my_printf("pin in 1\n");
-    } else {
-      gpio_put(act_1, 0);
-    }
-    // sleep_ms(10);
-    for (int i = 0; i < 1000000; i++) asm volatile ("");
+  int32_t min = INT32_MAX;
+  int32_t max = INT32_MIN;
+  for (int i = 0; i < audio_in_buf_half_size; i++) {
+    int32_t value = buf[i] & 0xffffff00;
+    if (value > max) max = value;
+    if (value < min) min = value;
   }
-*/
+  uint32_t diff = max - min;
+  gpio_put(act_1, diff >= 12000000);
+
+  static int count = 0;
+  if (++count == 103125 / audio_in_buf_half_size) {
+    my_printf("min -%08x, max %08x, diff %08x\n", -min, max, diff);
+    count = 0;
   }
 }
 
@@ -555,7 +537,7 @@ int main()
   gpio_set_dir(act_2, GPIO_OUT);
   gpio_put(act_2, 1);
 
-  uart_init(uart0, 115200);
+  uart_init(uart0, 9600);
   gpio_set_function(16, GPIO_FUNC_UART);
   gpio_set_function(17, GPIO_FUNC_UART);
 
@@ -634,7 +616,7 @@ void core1_entry()
     gpio_put(act_2, 0); sleep_ms(200);
     static uint32_t i = 0;
     i++;
-    my_printf("Hello, UART %u!%c", i, i % 2 == 0 ? '\n' : '\t');
+    // my_printf("Hello, UART %u!%c", i, i % 2 == 0 ? '\n' : '\t');
   /*
     if (i >= 10 && i % 10 == 0) {
       audio_buf_suspend();
