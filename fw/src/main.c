@@ -282,6 +282,7 @@ void leds_init()
   dma_ch4 = dma_channel_get_default_config(4);
   channel_config_set_read_increment(&dma_ch4, true);
   channel_config_set_write_increment(&dma_ch4, false);
+  channel_config_set_dreq(&dma_ch4, pio_get_dreq(pio1, sm, /* is_tx */ true));
   dma_channel_set_config(4, &dma_ch4, false);
   dma_channel_set_write_addr(4, &pio1->txf[sm], false);
 
@@ -469,17 +470,17 @@ int main()
     pump(3, +1); gpio_put(act_1, 1); sleep_ms(1800);
     pump(3,  0); gpio_put(act_1, 0); sleep_ms(500);
   }
-*/
 
   tuh_init(BOARD_TUH_RHPORT);
   while (1) {
     tuh_task();
   }
   while (1) { }
+*/
 
   leds_init();
 
-  uint8_t a[10][4][3] = {{{ 0 }}};
+  uint8_t a[20][4][3] = {{{ 0 }}};
   while (1) {
     /*
     if (a[0][0][1] > 0) {
@@ -491,7 +492,9 @@ int main()
     a[1][0][0] = 0x33; a[1][0][1] = 0x01; a[1][0][2] = 0x60;
     a[2][0][0] = 0x33; a[2][0][1] = 0x01; a[2][0][2] = 0x60;
     a[3][0][0] = 0x33; a[3][0][1] = 0x01; a[3][0][2] = 0x60;
-    leds_blast(a, 10);
+    for (int i = 5; i < 20; i += 2)
+      a[i][0][1] = 0x10;
+    leds_blast(a, 20);
     gpio_put(act_1, 1); sleep_ms(100);
     gpio_put(act_1, 0); sleep_ms(400);
   }
