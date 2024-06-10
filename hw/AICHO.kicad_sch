@@ -4497,6 +4497,11 @@
     (effects (font (size 1.27 1.27) italic) (justify left bottom))
     (uuid 9b710645-50ec-4493-ba1c-6562c27d49a9)
   )
+  (text "** This is wrong. **\nR12 should be across\nGND and TH so as to\nform a resistor divider\nfrom MICBIAS"
+    (at 262.255 145.415 0)
+    (effects (font (size 1.27 1.27) italic) (justify left bottom))
+    (uuid 9ceba4ca-c73a-496a-8902-22e0477b314c)
+  )
   (text "Physical Output" (at 15.875 139.065 0)
     (effects (font (size 1.905 1.905) italic) (justify left bottom))
     (uuid a03ebab7-f9bd-4143-8281-2e008a258150)

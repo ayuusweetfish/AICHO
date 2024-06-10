@@ -160,33 +160,10 @@ void audio_in_init()
   gpio_init(8); gpio_set_dir(8, GPIO_OUT);
   gpio_put(8, 1);
 
-  gpio_init(4); gpio_set_dir(4, GPIO_IN);
-  gpio_init(5); gpio_set_dir(5, GPIO_IN);
-  gpio_init(6); gpio_set_dir(6, GPIO_IN);
-
-/*
-  while (1) {
-    // gpio_put(7, 1);
-    // my_printf("read CK = %d, WS = %d\n", gpio_get(5), gpio_get(6));
-    // gpio_put(act_1, gpio_get(5) | gpio_get(6));
-    // gpio_put(7, 0);
-    gpio_put(act_1, gpio_get(4));
-  }
-*/
-
-  sleep_ms(10);
+  sleep_ms(40); // MAX9814 shutdown disable time (t_OFF)
   uint sm_in = pio_claim_unused_sm(pio0, true);
   i2s_in_program_init(pio0, sm_in, 4);
   pio_sm_set_enabled(pio0, sm_in, true);
-
-  while (0) {
-    uint32_t value;
-    // 51.5625 kHz, each sample frame has two 32b channels
-    for (int i = 0; i < 103125; i++)
-      value = pio_sm_get_blocking(pio0, sm_in);
-    static int parity = 0;
-    gpio_put(act_1, parity ^= 1);
-  }
 
   dma_ch8 = dma_channel_get_default_config(8);
   channel_config_set_read_increment(&dma_ch8, false);
@@ -234,7 +211,7 @@ void consume_buffer(const int32_t *buf)
     if (value < min) min = value;
   }
   uint32_t diff = max - min;
-  gpio_put(act_1, diff >= 12000000);
+  gpio_put(act_1, diff >= 15000000);
 
   static int count = 0;
   if (++count == 103125 / audio_in_buf_half_size) {
@@ -388,19 +365,6 @@ void leds_blast(uint8_t a[][4][3], int n)
   // Little-endian, PIO shifts right
   static uint8_t leds_buf[80][12];
 
-/*
-  static uint32_t seed = 24067;
-  for (int i = 0; i < 80 * 4; i++) {
-    seed = seed * 1103515245 + 12345;
-    leds_buf[i % 80] ^= (seed ^ (seed << 11));
-  }
-*/
-/*
-  for (int i = 0; i < n; i++) {
-    leds_buf[i] = 0xaa55ccd4;
-  }
-*/
-
   for (int i = 0; i < n; i++) {
     // G
     for (int j = 0; j < 4; j++)
@@ -435,17 +399,7 @@ void leds_blast(uint8_t a[][4][3], int n)
         (((a[i][1][2] >> (1 + j * 2)) & 1) << 5) |
         (((a[i][2][2] >> (1 + j * 2)) & 1) << 6) |
         (((a[i][3][2] >> (1 + j * 2)) & 1) << 7);
-
-/*
-    for (int j = 0; j < 12; j++)
-      my_printf(" %01x %01x", (int)(leds_buf[i][j] & 0xf), (int)(leds_buf[i][j] >> 4));
-    my_printf("\n");
-    for (int j = 0; j < 3; j++)
-      my_printf(" %08x", ((uint32_t *)&leds_buf[i][0])[j]);
-    my_printf("\n");
-*/
   }
-  // my_printf("======\n");
 
   dma_channel_set_read_addr(4, leds_buf, false);
   dma_channel_set_trans_count(4, n * 3, true);
@@ -617,15 +571,6 @@ void core1_entry()
     static uint32_t i = 0;
     i++;
     // my_printf("Hello, UART %u!%c", i, i % 2 == 0 ? '\n' : '\t');
-  /*
-    if (i >= 10 && i % 10 == 0) {
-      audio_buf_suspend();
-      gpio_put(act_2, 0);
-    } else if (i >= 10 && i % 10 == 1) {
-      audio_buf_resume();
-      gpio_put(act_2, 1);
-    }
-  */
     if (i % 10 == 3) {
       int org = ((i / 10 + 1) / 2) % 4;
       int dir = (i / 10 + 1) % 2;

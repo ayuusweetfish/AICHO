@@ -16,6 +16,8 @@ static inline void i2s_in_mck_out_program_init(PIO pio, uint sm, uint out_pin) {
 
   // 5 = 132 MHz / 13.2 MHz / 2
   sm_config_set_clkdiv_int_frac(&sm_config, 5, 0);
+  // Resulting sample rate is 51.5625 kHz, with
+  // each sample frame comprising two 32b channels
 
   pio_sm_init(pio, sm, offset, &sm_config);
   pio_sm_set_pins(pio, sm, 1);
