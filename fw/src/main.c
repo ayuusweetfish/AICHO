@@ -76,7 +76,7 @@ void audio_buf_init()
 #if BOARD_REV == 1
   i2s_out_program_init(pio0, sm, &i2s_out_program, 2, 3);
 #elif BOARD_REV == 2
-  i2s_out_program_init(pio0, sm, &i2s_out_swapclk_program, 1, 2);
+  i2s_out_program_init(pio0, sm, &i2s_out_program, 1, 2);
 #endif
 
   pio_sm_set_enabled(pio0, sm, true);
@@ -211,7 +211,7 @@ void consume_buffer(const int32_t *buf)
     if (value < min) min = value;
   }
   uint32_t diff = max - min;
-  gpio_put(act_1, diff >= 0x80000000);
+  gpio_put(act_1, diff >= 0xa0000000);
 
   static int count = 0;
   if (++count == 103125 / audio_in_buf_half_size) {
@@ -328,6 +328,8 @@ static inline void polyphonic_out(struct polyphonic_sampler *s, uint32_t out[20]
   critical_section_exit(&s->crit);
 
   for (int j = 0; j < 20; j++) {
+    // Divide sample by 8
+    // Note: this should be at least equal to `POLYPHONY`
     int16_t sample = mix[j] >> 3;
     // (R << 16) | L
     out[j] = (((uint32_t)sample << 16) | (uint32_t)sample);
@@ -502,7 +504,7 @@ int main()
 
   my_printf("flash_erase_64k()  at %08x\n", &flash_erase_64k);
   my_printf("flash_test_write() at %08x\n", &flash_test_write);
-  // while (1) { }
+  // while (1) { } // Uncomment when uploading the data
 
   multicore_reset_core1();
   multicore_fifo_pop_blocking();
@@ -582,4 +584,13 @@ void refill_buffer(uint32_t *buf)
   for (int i = 0; i < audio_buf_half_size; i += 20) {
     polyphonic_out(&ps1, buf + i);
   }
+/*
+  assert(audio_buf_half_size % 100 == 0);
+  for (int i = 0; i < audio_buf_half_size; i += 200) {
+    for (int j =   0; j <  50; j++) buf[i + j] = 0x00000000;
+    for (int j =  50; j < 100; j++) buf[i + j] = 0x10000000;
+    for (int j = 100; j < 150; j++) buf[i + j] = 0x00001000;
+    for (int j = 150; j < 200; j++) buf[i + j] = 0x10001000;
+  }
+*/
 }
