@@ -18,6 +18,9 @@
 #define uQOA_IMPL
 #include "uqoa.h"
 
+// fft.c
+void fft_init();
+
 // ============ Debug output ============
 
 static inline void my_putc(uint8_t c)
@@ -513,6 +516,8 @@ int main()
 
   audio_in_init();
   audio_in_resume();
+
+  fft_init();
 
 /*
   pump_init();
