@@ -62,6 +62,38 @@ public entry_point:
     set x, 14         side 0b11
 
 
+.program i2s_out_32b
+.side_set 2
+
+                    ;        /--- LRCLK
+                    ;        |/-- BCLK
+bitloop1:           ;        ||
+    out pins, 1       side 0b10
+    jmp x-- bitloop1  side 0b11
+
+    set pins, 0       side 0b10
+    set x, 14         side 0b11
+zeroloop1:
+    set pins, 0       side 0b10
+    jmp x-- zeroloop1 side 0b11
+
+    out pins, 1       side 0b00
+    set x, 14         side 0b01
+bitloop0:
+    out pins, 1       side 0b00
+    jmp x-- bitloop0  side 0b01
+
+    set pins, 0       side 0b00
+    set x, 14         side 0b01
+zeroloop0:
+    set pins, 0       side 0b00
+    jmp x-- zeroloop0 side 0b01
+
+    out pins, 1       side 0b10
+public entry_point:
+    set x, 14         side 0b11
+
+
 % c-sdk {
 
 static inline void i2s_out_program_init(PIO pio, uint sm, const struct pio_program *program, uint data_pin, uint clock_pin_base) {
