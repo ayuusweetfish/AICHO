@@ -328,9 +328,10 @@ static inline void polyphonic_out(struct polyphonic_sampler *s, uint32_t out[20]
   critical_section_exit(&s->crit);
 
   for (int j = 0; j < 20; j++) {
-    // Divide sample by 32
-    // Note: this should be at least equal to `POLYPHONY`
-    int16_t sample = mix[j] >> 5;
+    // 1.5V ~ 2.2V ~ 2.9V (0x4000 ~ 0x6000 ~ 0x7fff)
+    // Divide sample by 128
+    // Note: this should be at least equal to `POLYPHONY` * 4 (dynamic range) = 32
+    int16_t sample = 0x6000 + (mix[j] >> 7);
     // (R << 16) | L
     out[j] = (((uint32_t)sample << 16) | (uint32_t)sample);
   }
@@ -584,7 +585,6 @@ void refill_buffer(uint32_t *buf)
   for (int i = 0; i < audio_buf_half_size; i += 20) {
     polyphonic_out(&ps1, buf + i);
   }
-  return;
 
 /*
   assert(audio_buf_half_size % 100 == 0);
@@ -605,13 +605,14 @@ void refill_buffer(uint32_t *buf)
   }
   if (phase >= M_PI * 2) phase -= M_PI * 2;
 */
+/*
   static float block[1200]; // audio_buf_half_size
   static bool initialised = false;
   if (!initialised) {
     for (int i = 0; i < audio_buf_half_size; i++) {
       // 48 kHz / 1200 * 20 = 800 Hz
       float phase = M_PI * 2 * i / audio_buf_half_size * 20;
-      int16_t sample = (int16_t)(0.5f + 32767.0f * 0.1f * (1.0f + sinf(phase)) / 2);
+      int16_t sample = (int16_t)(16383.5f + 16384.0f * 0.01f * sinf(phase));
     #if BOARD_REV == 1
       sample >>= 3;
     #endif
@@ -622,7 +623,8 @@ void refill_buffer(uint32_t *buf)
   if (count < 80) {
     for (int i = 0; i < audio_buf_half_size; i++) buf[i] = block[i];
   } else {
-    for (int i = 0; i < audio_buf_half_size; i++) buf[i] = (i % 60 == 0 ? 0x10001000 : 0);
+    for (int i = 0; i < audio_buf_half_size; i++) buf[i] = (i % 60 < 30 ? 0x60806080 : 0x60006000);
   }
   if (++count == 160) count = 0;
+*/
 }
