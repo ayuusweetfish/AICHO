@@ -211,7 +211,7 @@ void consume_buffer(const int32_t *buf)
     if (value < min) min = value;
   }
   uint32_t diff = max - min;
-  gpio_put(act_1, diff >= 15000000);
+  gpio_put(act_1, diff >= 0x80000000);
 
   static int count = 0;
   if (++count == 103125 / audio_in_buf_half_size) {
@@ -328,7 +328,7 @@ static inline void polyphonic_out(struct polyphonic_sampler *s, uint32_t out[20]
   critical_section_exit(&s->crit);
 
   for (int j = 0; j < 20; j++) {
-    int16_t sample = mix[j] >> 7;
+    int16_t sample = mix[j] >> 3;
     // (R << 16) | L
     out[j] = (((uint32_t)sample << 16) | (uint32_t)sample);
   }
@@ -491,7 +491,7 @@ int main()
   gpio_set_dir(act_2, GPIO_OUT);
   gpio_put(act_2, 1);
 
-  uart_init(uart0, 9600);
+  uart_init(uart0, 115200);
   gpio_set_function(16, GPIO_FUNC_UART);
   gpio_set_function(17, GPIO_FUNC_UART);
 
