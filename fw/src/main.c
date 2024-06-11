@@ -19,7 +19,9 @@
 #include "uqoa.h"
 
 // fft.c
+#define FFT_N 2048
 void fft_init();
+void fft(const int32_t *restrict in, int32_t *restrict out);
 
 // ============ Debug output ============
 
@@ -65,7 +67,7 @@ void flash_test_write(uint32_t addr, size_t size)
 
 // ============ Audio buffer ============
 
-static uint32_t audio_buf[2400];
+static uint32_t audio_buf[9600];
 static const uint32_t audio_buf_half_size = (sizeof audio_buf) / (sizeof audio_buf[0]) / 2;
 
 static inline void refill_buffer(uint32_t *buf);
@@ -145,8 +147,9 @@ void dma_irq0_handler()
 
 // ============ Audio input buffer ============
 
-static uint32_t audio_in_buf[2400];
+static uint32_t audio_in_buf[FFT_N * 2];
 static const uint32_t audio_in_buf_half_size = (sizeof audio_in_buf) / (sizeof audio_in_buf[0]) / 2;
+// audio_in_buf_half_size == FFT_N
 
 static inline void consume_buffer(const int32_t *buf);
 static void dma_irq1_handler();
@@ -216,9 +219,18 @@ void consume_buffer(const int32_t *buf)
   uint32_t diff = max - min;
   gpio_put(act_1, diff >= 0xa0000000);
 
+  static int32_t fft_result[FFT_N / 2 + 1][2];
+  fft(buf, &fft_result[0][0]);
+
   static int count = 0;
   if (++count == 103125 / audio_in_buf_half_size) {
-    my_printf("min -%08x, max %08x, diff %08x\n", -min, max, diff);
+    my_printf("min -%08x, max %08x, diff %08x, fft %d %d = %d\n", -min, max, diff,
+      fft_result[789][0], fft_result[789][1],
+      (int32_t)((
+        (int64_t)fft_result[789][0] * fft_result[789][0] +
+        (int64_t)fft_result[789][1] * fft_result[789][1]
+      ) >> 32)
+    );
     count = 0;
   }
 }
@@ -510,14 +522,11 @@ int main()
   my_printf("flash_test_write() at %08x\n", &flash_test_write);
   // while (1) { } // Uncomment when uploading the data
 
+  fft_init();
+
   multicore_reset_core1();
   multicore_fifo_pop_blocking();
   multicore_launch_core1(core1_entry);
-
-  audio_in_init();
-  audio_in_resume();
-
-  fft_init();
 
 /*
   pump_init();
@@ -564,6 +573,9 @@ void core1_entry()
   audio_buf_init();
   audio_buf_resume();
 
+  audio_in_init();
+  audio_in_resume();
+
   polyphonic_trigger(&ps1,
     FILE_ADDR_Lorivox_In_bin,
     FILE_SIZE_Lorivox_In_bin);
@@ -575,14 +587,16 @@ void core1_entry()
     i++;
     // my_printf("Hello, UART %u!%c", i, i % 2 == 0 ? '\n' : '\t');
     if (i % 10 == 3) {
-      int org = ((i / 10 + 1) / 2) % 5;
+      int org = ((i / 10 + 1) / 2) % 6;
       int dir = (i / 10 + 1) % 2;
-      if (org == 4) {
-        for (int org = 0; org < 4; org++)
+      if (org < 2) {
+        int group = org;
+        for (int org = group; org < 4; org += 2)
           polyphonic_trigger(&ps1,
             organism_sounds[org][dir][0],
             organism_sounds[org][dir][1]);
       } else {
+        org -= 2;
         polyphonic_trigger(&ps1,
           organism_sounds[org][dir][0],
           organism_sounds[org][dir][1]);

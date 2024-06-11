@@ -1,5 +1,6 @@
 // Based on kissfft-131.1.0
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -19,6 +20,7 @@ void *my_kiss_fft_malloc(size_t n_bytes)
   my_printf("kiss_fft alloc %zu bytes\n", n_bytes);
   void *p = my_kiss_fft_buf + my_kiss_fft_buf_ptr;
   my_kiss_fft_buf_ptr += n_bytes;
+  assert(my_kiss_fft_buf_ptr <= MY_KISS_FFT_BUF_SIZE);
   return p;
 }
 
