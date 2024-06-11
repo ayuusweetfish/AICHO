@@ -570,11 +570,18 @@ void core1_entry()
     i++;
     // my_printf("Hello, UART %u!%c", i, i % 2 == 0 ? '\n' : '\t');
     if (i % 10 == 3) {
-      int org = ((i / 10 + 1) / 2) % 4;
+      int org = ((i / 10 + 1) / 2) % 5;
       int dir = (i / 10 + 1) % 2;
-      polyphonic_trigger(&ps1,
-        organism_sounds[org][dir][0],
-        organism_sounds[org][dir][1]);
+      if (org == 4) {
+        for (int org = 0; org < 4; org++)
+          polyphonic_trigger(&ps1,
+            organism_sounds[org][dir][0],
+            organism_sounds[org][dir][1]);
+      } else {
+        polyphonic_trigger(&ps1,
+          organism_sounds[org][dir][0],
+          organism_sounds[org][dir][1]);
+      }
     }
   }
 }
