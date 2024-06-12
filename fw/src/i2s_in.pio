@@ -30,8 +30,9 @@ static inline void i2s_in_mck_out_program_init(PIO pio, uint sm, uint out_pin) {
 ; Input pins: SD, CK (BCK), WS (LRCK)
 
   wait 0 pin 2
-  wait 1 pin 2
 .wrap_target
+  wait 1 pin 1
+  wait 1 pin 2
   wait 1 pin 1
   in pins, 1
   wait 0 pin 1
@@ -48,7 +49,7 @@ static inline void i2s_in_program_init(PIO pio, uint sm, uint in_pin_base) {
   // PIO can read all pins, so no need for `pio_gpio_init()`
   pio_sm_set_consecutive_pindirs(pio, sm, in_pin_base, 3, /* is_out */ false);
 
-  sm_config_set_clkdiv_int_frac(&sm_config, 10, 0);
+  sm_config_set_clkdiv_int_frac(&sm_config, 4, 0);
 
   pio_sm_init(pio, sm, offset, &sm_config);
 }

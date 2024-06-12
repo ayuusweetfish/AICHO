@@ -222,12 +222,13 @@ void consume_buffer(const int32_t *buf)
   static int count = 0;
 
   static int32_t fft_result[audio_in_buf_half_size / 2 + 1][2];
-  if (count % 2 == 0)
-    fft(buf, &fft_result[0][0]);
+  fft(buf, &fft_result[0][0]);
 
-  // Each sample frame comprises two channels, so a second has 2 * f_s = 103.125 s32's
-  if (++count == 103125 / audio_in_buf_half_size) {
-    my_printf("min -%08x, max %08x, diff %08x, fft %d %d = %d\n", -min, max, diff,
+  // Report each second
+  if (++count == 51563 / audio_in_buf_half_size) {
+    my_printf("[%8u] min -%08x, max %08x, diff %08x, fft %d %d = %d\n",
+      to_ms_since_boot(get_absolute_time()),
+      -min, max, diff,
       fft_result[789][0], fft_result[789][1],
       (int32_t)((
         (int64_t)fft_result[789][0] * fft_result[789][0] +
@@ -537,6 +538,7 @@ int main()
 
   fft_init();
 
+/*
   static uint32_t buf[audio_in_buf_half_size] = { 0 };
   static int32_t fft_result[audio_in_buf_half_size / 2 + 1][2];
   int32_t t0 = to_ms_since_boot(get_absolute_time());
@@ -550,6 +552,7 @@ int main()
     }
   }
   while (1) { }
+*/
 
   multicore_reset_core1();
   multicore_fifo_pop_blocking();
