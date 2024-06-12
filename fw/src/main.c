@@ -68,7 +68,7 @@ void flash_test_write(uint32_t addr, size_t size)
 // ============ Audio buffer ============
 
 static uint32_t audio_buf[9600];
-static const uint32_t audio_buf_half_size = (sizeof audio_buf) / (sizeof audio_buf[0]) / 2;
+#define audio_buf_half_size ((sizeof audio_buf) / (sizeof audio_buf[0]) / 2)
 
 static inline void refill_buffer(uint32_t *buf);
 static void dma_irq0_handler();
@@ -148,7 +148,7 @@ void dma_irq0_handler()
 // ============ Audio input buffer ============
 
 static uint32_t audio_in_buf[FFT_N * 2];
-static const uint32_t audio_in_buf_half_size = (sizeof audio_in_buf) / (sizeof audio_in_buf[0]) / 2;
+#define audio_in_buf_half_size ((sizeof audio_in_buf) / (sizeof audio_in_buf[0]) / 2)
 // audio_in_buf_half_size == FFT_N
 
 static inline void consume_buffer(const int32_t *buf);
@@ -219,10 +219,13 @@ void consume_buffer(const int32_t *buf)
   uint32_t diff = max - min;
   gpio_put(act_1, diff >= 0xa0000000);
 
-  static int32_t fft_result[FFT_N / 2 + 1][2];
-  fft(buf, &fft_result[0][0]);
-
   static int count = 0;
+
+  static int32_t fft_result[audio_in_buf_half_size / 2 + 1][2];
+  if (count % 2 == 0)
+    fft(buf, &fft_result[0][0]);
+
+  // Each sample frame comprises two channels, so a second has 2 * f_s = 103.125 s32's
   if (++count == 103125 / audio_in_buf_half_size) {
     my_printf("min -%08x, max %08x, diff %08x, fft %d %d = %d\n", -min, max, diff,
       fft_result[789][0], fft_result[789][1],
@@ -328,21 +331,31 @@ static inline uint8_t polyphonic_trigger(
   critical_section_exit(&s->crit);
 }
 
-static inline void polyphonic_out(struct polyphonic_sampler *s, uint32_t out[20])
+// Fixed size `audio_buf_half_size`
+static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_t *restrict out)
 {
-  int32_t mix[20] = { 0 };
+  assert(audio_buf_half_size % 20 == 0);
+
+  static int32_t mix[audio_buf_half_size];
+  memset(mix, 0, sizeof mix);
+
   int16_t voice[20];
 
   critical_section_enter_blocking(&s->crit);
   for (uint8_t i = 0; i < POLYPHONY; i++)
     if (s->active[i]) {
-      sampler_decode(&s->s[i], voice);
-      for (int j = 0; j < 20; j++) mix[j] += voice[j];
-      if (s->s[i].ptr == 0) s->active[i] = false;
+      for (int j = 0; j < audio_buf_half_size; j += 20) {
+        sampler_decode(&s->s[i], voice);
+        for (int k = 0; k < 20; k++) mix[j + k] += voice[k];
+        if (s->s[i].ptr == 0) {
+          s->active[i] = false;
+          break;
+        }
+      }
     }
   critical_section_exit(&s->crit);
 
-  for (int j = 0; j < 20; j++) {
+  for (int j = 0; j < audio_buf_half_size; j++) {
     // 1.5V ~ 2.2V ~ 2.9V (0x4000 ~ 0x6000 ~ 0x7fff)
     // Divide sample by 128
     // Note: this should be at least equal to `POLYPHONY` * 4 (dynamic range) = 32
@@ -524,6 +537,20 @@ int main()
 
   fft_init();
 
+  static uint32_t buf[audio_in_buf_half_size] = { 0 };
+  static int32_t fft_result[audio_in_buf_half_size / 2 + 1][2];
+  int32_t t0 = to_ms_since_boot(get_absolute_time());
+  for (int i = 0; i < 1000; i++) {
+    fft(buf, &fft_result[0][0]);
+    if ((i + 1) % 100 == 0) {
+      int32_t t1 = to_ms_since_boot(get_absolute_time());
+      my_printf("%d - %u\n", i + 1, t1 - t0);
+      t0 = t1;
+      gpio_put(act_1, (i / 100) & 1);
+    }
+  }
+  while (1) { }
+
   multicore_reset_core1();
   multicore_fifo_pop_blocking();
   multicore_launch_core1(core1_entry);
@@ -607,10 +634,7 @@ void core1_entry()
 
 void refill_buffer(uint32_t *buf)
 {
-  assert(audio_buf_half_size % 20 == 0);
-  for (int i = 0; i < audio_buf_half_size; i += 20) {
-    polyphonic_out(&ps1, buf + i);
-  }
+  polyphonic_out(&ps1, buf);
 
 /*
   assert(audio_buf_half_size % 100 == 0);
