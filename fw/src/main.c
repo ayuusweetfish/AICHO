@@ -67,8 +67,10 @@ void flash_test_write(uint32_t addr, size_t size)
 
 // ============ Audio buffer ============
 
-static uint32_t audio_buf[19200];
+static uint32_t audio_buf[9600];  // s32 stereo; half buffer 2400 samples = 50 ms
+// Count of u32's (words / transfer units)
 #define audio_buf_half_size ((sizeof audio_buf) / (sizeof audio_buf[0]) / 2)
+// Count of sample frames
 #define audio_buf_half_frame (audio_buf_half_size / 2)
 
 static inline void refill_buffer(uint32_t *buf);
