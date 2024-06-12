@@ -13,7 +13,8 @@ typedef struct {
 void qoa_start_frame(qoa_lms *lms);
 uint64_t qoa_encode_slice(qoa_lms *lms, int16_t samples[20], uint8_t *sf_hint);
 
-void qoa_decode_slice(qoa_lms *lms, uint64_t slice, int16_t out_samples[20]);
+static inline void qoa_decode_slice(qoa_lms *lms, uint64_t slice, int16_t out_samples[20]);
+static inline void qoa_mix_slice(qoa_lms *lms, uint64_t slice, int32_t out_samples[20]);
 
 #ifdef uQOA_IMPL
 static inline int32_t qoa_lms_predict(qoa_lms *lms)
@@ -182,18 +183,42 @@ inline uint64_t qoa_encode_slice(qoa_lms *lms, int16_t samples[20], uint8_t *sf_
 
 // Decoder
 
-inline void qoa_decode_slice(qoa_lms *lms, uint64_t slice, int16_t out_samples[20])
+static inline void qoa_decode_slice(qoa_lms *lms, uint64_t slice, int16_t out_samples[20])
 {
   uint8_t sf = slice >> 60;
-  for (int i = 0; i < 20; i++) {
-    int32_t predicted = qoa_lms_predict(lms);
-    int16_t quantized = (slice >> 57) & 0x7;
-    int16_t dequantized = qoa_dequant(sf, quantized);
-    int16_t reconstructed = qoa_sat_s16(predicted + dequantized);
-    out_samples[i] = reconstructed;
-    slice <<= 3;
-    qoa_lms_update(lms, reconstructed, dequantized);
-  }
+  uint32_t m30 = slice >> 30;
+  uint32_t l30 = slice;
+#define process_sample(_slice32) do { \
+    int32_t predicted = qoa_lms_predict(lms); \
+    int16_t quantized = ((_slice32) >> 27) & 0x7; \
+    int16_t dequantized = qoa_dequant(sf, quantized); \
+    int16_t reconstructed = qoa_sat_s16(predicted + dequantized); \
+    out_samples[i] = reconstructed; \
+    (_slice32) <<= 3; \
+    qoa_lms_update(lms, reconstructed, dequantized); \
+  } while (0)
+  for (int i = 0; i < 10; i++) process_sample(m30);
+  for (int i = 10; i < 20; i++) process_sample(l30);
+#undef process_sample
+}
+
+static inline void qoa_mix_slice(qoa_lms *lms, uint64_t slice, int32_t out_samples[20])
+{
+  uint8_t sf = slice >> 60;
+  uint32_t m30 = slice >> 30;
+  uint32_t l30 = slice;
+#define process_sample(_slice32) do { \
+    int32_t predicted = qoa_lms_predict(lms); \
+    int16_t quantized = ((_slice32) >> 27) & 0x7; \
+    int16_t dequantized = qoa_dequant(sf, quantized); \
+    int16_t reconstructed = qoa_sat_s16(predicted + dequantized); \
+    out_samples[i] += reconstructed; \
+    (_slice32) <<= 3; \
+    qoa_lms_update(lms, reconstructed, dequantized); \
+  } while (0)
+  for (int i = 0; i < 10; i++) process_sample(m30);
+  for (int i = 10; i < 20; i++) process_sample(l30);
+#undef process_sample
 }
 #endif
 

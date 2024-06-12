@@ -240,7 +240,7 @@ struct sampler {
 };
 
 #pragma gcc optimize("O3")
-static inline void sampler_decode(struct sampler *s, int16_t out[20])
+static inline void sampler_mix(struct sampler *s, int32_t out[20])
 {
   if (s->ptr % (256 * 8) == 0) {
     uint64_t h = *(uint64_t *)AUXDAT(s->start + s->ptr);
@@ -252,7 +252,7 @@ static inline void sampler_decode(struct sampler *s, int16_t out[20])
     s->ptr += 16;
   }
   uint64_t slice = *(uint64_t *)AUXDAT(s->start + s->ptr);
-  qoa_decode_slice(&s->qoa_state, slice, out);
+  qoa_mix_slice(&s->qoa_state, slice, out);
   if ((s->ptr += 8) >= s->len) s->ptr = 0;
 }
 
@@ -273,7 +273,7 @@ static inline uint8_t polyphonic_trigger(
   struct polyphonic_sampler *s,
   uint32_t start, uint32_t len
 ) {
-  critical_section_enter_blocking(&s->crit);
+  // critical_section_enter_blocking(&s->crit);
 
   // Find a voice
   uint8_t voice_id = 0xff;
@@ -298,7 +298,7 @@ static inline uint8_t polyphonic_trigger(
   };
   s->active[voice_id] = true;
 
-  critical_section_exit(&s->crit);
+  // critical_section_exit(&s->crit);
 }
 
 // Fixed size `audio_buf_half_size` (count of s32's) / `audio_buf_half_frame` (count of sample frames)
@@ -311,21 +311,18 @@ static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_
   static int32_t mix[audio_buf_half_frame];
   memset(mix, 0, sizeof mix);
 
-  int16_t voice[20];
-
-  critical_section_enter_blocking(&s->crit);
+  // critical_section_enter_blocking(&s->crit);
   for (uint8_t i = 0; i < POLYPHONY; i++)
     if (s->active[i]) {
       for (int j = 0; j < audio_buf_half_frame; j += 20) {
-        sampler_decode(&s->s[i], voice);
-        for (int k = 0; k < 20; k++) mix[j + k] += voice[k];
+        sampler_mix(&s->s[i], mix + j);
         if (s->s[i].ptr == 0) {
           s->active[i] = false;
           break;
         }
       }
     }
-  critical_section_exit(&s->crit);
+  // critical_section_exit(&s->crit);
 
   for (int j = 0; j < audio_buf_half_frame; j++) {
     // 1.5V ~ 2.2V ~ 2.9V (0x4000 ~ 0x6000 ~ 0x7fff)
@@ -522,7 +519,7 @@ if (0) {
     polyphonic_out(&ps1, buf);
     if ((i + 1) % 50 == 0) {
       uint32_t t1 = to_ms_since_boot(get_absolute_time());
-      // ~~971~~ 730 ms (POLYPHONY = 8: 1444 ms) for 50 * 2400 = 120 k samples = 5 s of audio
+      // 1340 ms for 50 * 2400 = 120 k samples = 5 s of audio
       my_printf("%4d %8u\n", i + 1, t1 - t0);
       t0 = t1;
     }
