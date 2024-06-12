@@ -536,6 +536,74 @@ if (0) {
   leds_init();
   tuh_init(BOARD_TUH_RHPORT);
 
+  // Task pool
+  struct proceed_t {
+    struct proceed_t (*fn)(void);
+    uint32_t wait;
+  };
+
+  struct proceed_t task_uart_1s() {
+    my_printf("[%8u] second!\n", to_ms_since_boot(get_absolute_time()));
+    return (struct proceed_t){task_uart_1s, 1000000};
+  }
+
+  struct proceed_t task_usb() {
+    tuh_task();
+    return (struct proceed_t){task_usb, 1000};    // 1 ms
+  }
+
+  struct proceed_t task_pumps() {
+    return (struct proceed_t){task_pumps, 1000};  // 1 ms
+  };
+
+  struct proceed_t task_leds() {
+    uint8_t a[96][4][3] = {{{ 0 }}};
+    static uint32_t n = 0;
+    for (int strip = 0; strip < 4; strip++) {
+      for (int i = 0; i < 96; i++) {
+        int32_t x = 4 - (int32_t)(i + strip + n / 8) % 8;
+        a[i][strip][strip % 3] = x < 0 ? -x : x;
+      }
+    }
+    n++;
+    // 96 * 24 / 800 kHz = 2.88 ms
+    leds_blast(a, 96);
+    return (struct proceed_t){task_leds, 10000};  // 10 ms = 100 fps
+  };
+
+  struct task_t {
+    struct proceed_t (*fn)(void);
+    uint64_t next_tick;
+  };
+  uint64_t cur_tick = time_us_64(); // to_us_since_boot(get_absolute_time());
+  struct task_t task_pool[] = {
+    {task_uart_1s, cur_tick},
+    {task_usb, cur_tick},
+    {task_pumps, cur_tick},
+    {task_leds, cur_tick},
+  };
+  while (1) {
+    uint64_t cur_tick = time_us_64();
+    int64_t soonest_diff = INT64_MAX;
+    int soonest_index = -1;
+    for (int i = 0; i < (sizeof task_pool) / (sizeof task_pool[0]); i++) {
+      int64_t diff = (int64_t)(task_pool[i].next_tick - cur_tick);
+      if (diff < soonest_diff) {
+        soonest_diff = diff;
+        soonest_index = i;
+      }
+    }
+    if (soonest_diff <= 0) {
+      // Execute task
+      struct proceed_t result = task_pool[soonest_index].fn();
+      task_pool[soonest_index].fn = result.fn;
+      task_pool[soonest_index].next_tick += result.wait;
+    } else {
+      // my_printf("sleep %lld\n", soonest_diff);
+      if (soonest_diff > 5) sleep_us(soonest_diff - 5);
+    }
+  }
+
 #if TESTRUN
 /*
   while (1) {
@@ -550,21 +618,6 @@ if (0) {
   }
   while (1) { }
 */
-
-  uint8_t a[20][4][3] = {{{ 0 }}};
-  while (1) {
-    if (a[0][0][1] > 0) {
-      if (++a[0][0][1] >= 10) a[0][0][1] = 0;
-    } else {
-      if (++a[0][0][0] >= 10) { a[0][0][0] = 0; a[0][0][1] = 1; }
-    }
-    for (int i = 2; i < 20; i += 2) a[i][0][1] = 0x10;
-    for (int i = 1; i < 20; i += 2) a[i][1][0] = 0x10;
-    for (int i = 0; i < 20; i += 2) a[i][2][1] = 0x10;
-    for (int i = 0; i < 20; i++) a[i][3][2] = ((i ^ a[0][0][0] ^ a[0][0][1]) & 1) ? 0x10 : 0;
-    leds_blast(a, 20);
-    sleep_ms(500);
-  }
 #endif
 }
 
@@ -594,7 +647,7 @@ void core1_entry()
     i++;
     gpio_put(act_2, 1); sleep_ms(100);
     gpio_put(act_2, 0); sleep_ms(200);
-    my_printf("[%8u] Hello, UART %u!\n", to_ms_since_boot(get_absolute_time()), i);
+    // my_printf("[%8u] Hello, UART %u!\n", to_ms_since_boot(get_absolute_time()), i);
     irq_set_enabled(DMA_IRQ_0, false);  // Defer audio output block-filling interrupts
     if (i % 10 == 3) {
       int org = ((i / 10 + 1) / 2) % 6;
@@ -652,11 +705,6 @@ void consume_buffer(const int32_t *buf)
 
   if (++count >= 0.2 * 51563 / audio_in_buf_half_size) {
   /*
-    my_printf("[%8u] p-p %08x, fft[789] %d\n",
-      to_ms_since_boot(get_absolute_time()),
-      diff, ampl[789]
-    );
-  */
     my_printf("[%8u] p-p %10u |", to_ms_since_boot(get_absolute_time()), diff);
     for (int i = 512; i <= 1024; i += 8) {
       uint32_t sum = 0;
@@ -669,6 +717,7 @@ void consume_buffer(const int32_t *buf)
         ' ');
     }
     my_printf("|\n");
+  */
     count = 0;
   }
 }
