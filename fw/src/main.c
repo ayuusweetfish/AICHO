@@ -18,11 +18,6 @@
 #define uQOA_IMPL
 #include "uqoa.h"
 
-// fft.c
-#define FFT_N 2048
-void fft_init();
-void fft(const int32_t *restrict in, int32_t *restrict out);
-
 // ============ Debug output ============
 
 static inline void my_putc(uint8_t c)
@@ -227,17 +222,36 @@ void consume_buffer(const int32_t *buf)
   static int32_t fft_result[audio_in_buf_half_size / 2 + 1][2];
   fft(buf, &fft_result[0][0]);
 
-  // Report each second
-  if (++count == 51563 / audio_in_buf_half_size) {
-    my_printf("[%8u] min -%08x, max %08x, diff %08x, fft %d %d = %d\n",
+  // FFT bins = 0 ~ 1024, from 0 to Nyquist freq. 25.78125 kHz
+  // each bin corresponds to 25.177 Hz
+
+  static uint32_t ampl[audio_in_buf_half_size / 2 + 1];
+  for (int i = 0; i <= audio_in_buf_half_size / 2; i++)
+    ampl[i] =
+      (uint32_t)((
+        (int64_t)fft_result[i][0] * fft_result[i][0] +
+        (int64_t)fft_result[i][1] * fft_result[i][1]
+      ) >> 32);
+
+  if (++count >= 0.2 * 51563 / audio_in_buf_half_size) {
+  /*
+    my_printf("[%8u] p-p %08x, fft[789] %d\n",
       to_ms_since_boot(get_absolute_time()),
-      -min, max, diff,
-      fft_result[789][0], fft_result[789][1],
-      (int32_t)((
-        (int64_t)fft_result[789][0] * fft_result[789][0] +
-        (int64_t)fft_result[789][1] * fft_result[789][1]
-      ) >> 32)
+      diff, ampl[789]
     );
+  */
+    my_printf("[%8u] p-p %10u |", to_ms_since_boot(get_absolute_time()), diff);
+    for (int i = 512; i <= 1024; i += 8) {
+      uint32_t sum = 0;
+      for (int j = i; j < i + 8; j++) sum += ampl[j];
+      sum /= 8;
+      my_printf("%c",
+        sum >= 300 ? '#' :
+        sum >= 100 ? '*' :
+        sum >=  25 ? '.' :
+        ' ');
+    }
+    my_printf("|\n");
     count = 0;
   }
 }
