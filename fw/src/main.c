@@ -256,7 +256,7 @@ static inline void sampler_decode(struct sampler *s, int16_t out[20])
   if ((s->ptr += 8) >= s->len) s->ptr = 0;
 }
 
-#define POLYPHONY 4
+#define POLYPHONY 8
 struct polyphonic_sampler {
   critical_section_t crit;
   struct sampler s[POLYPHONY];
@@ -522,6 +522,7 @@ if (0) {
     polyphonic_out(&ps1, buf);
     if ((i + 1) % 50 == 0) {
       uint32_t t1 = to_ms_since_boot(get_absolute_time());
+      // ~~971~~ 730 ms (POLYPHONY = 8: 1444 ms) for 50 * 2400 = 120 k samples = 5 s of audio
       my_printf("%4d %8u\n", i + 1, t1 - t0);
       t0 = t1;
     }
@@ -603,7 +604,7 @@ void core1_entry()
       int dir = (i / 10 + 1) % 2;
       if (org < 2) {
         int group = org;
-        for (int org = group; org < 4; org += 2)
+        for (int org = group; org < 4; org++)
           polyphonic_trigger(&ps1,
             organism_sounds[org][dir][0],
             organism_sounds[org][dir][1]);

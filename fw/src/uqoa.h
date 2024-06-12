@@ -18,9 +18,9 @@ void qoa_decode_slice(qoa_lms *lms, uint64_t slice, int16_t out_samples[20]);
 #ifdef uQOA_IMPL
 static inline int32_t qoa_lms_predict(qoa_lms *lms)
 {
-  int64_t prediction = 0;
+  int32_t prediction = 0;
   for (int i = 0; i < 4; i++)
-    prediction += (lms->weights[i] * lms->history[i]) >> 2;
+    prediction += ((int32_t)lms->weights[i] * lms->history[i]) >> 2;
   return prediction >> 11;
 }
 
