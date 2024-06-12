@@ -67,8 +67,9 @@ void flash_test_write(uint32_t addr, size_t size)
 
 // ============ Audio buffer ============
 
-static uint32_t audio_buf[9600];
+static uint32_t audio_buf[19200];
 #define audio_buf_half_size ((sizeof audio_buf) / (sizeof audio_buf[0]) / 2)
+#define audio_buf_half_frame (audio_buf_half_size / 2)
 
 static inline void refill_buffer(uint32_t *buf);
 static void dma_irq0_handler();
@@ -79,9 +80,9 @@ void audio_buf_init()
 {
   uint sm = pio_claim_unused_sm(pio0, true);
 #if BOARD_REV == 1
-  i2s_out_program_init(pio0, sm, &i2s_out_program, 2, 3);
+  i2s_out_32b_program_init(pio0, sm, &i2s_out_32b_program, 2, 3);
 #elif BOARD_REV == 2
-  i2s_out_program_init(pio0, sm, &i2s_out_program, 1, 2);
+  i2s_out_32b_program_init(pio0, sm, &i2s_out_32b_program, 1, 2);
 #endif
 
   pio_sm_set_enabled(pio0, sm, true);
@@ -332,12 +333,13 @@ static inline uint8_t polyphonic_trigger(
   critical_section_exit(&s->crit);
 }
 
-// Fixed size `audio_buf_half_size`
+// Fixed size `audio_buf_half_size` (count of s32's) / `audio_buf_half_frame` (count of sample frames)
+// Representation is s32, but pointer type is u32 to unify all data buffers
 static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_t *restrict out)
 {
-  assert(audio_buf_half_size % 20 == 0);
+  assert(audio_buf_half_frame % 20 == 0);
 
-  static int32_t mix[audio_buf_half_size];
+  static int32_t mix[audio_buf_half_frame];
   memset(mix, 0, sizeof mix);
 
   int16_t voice[20];
@@ -345,7 +347,7 @@ static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_
   critical_section_enter_blocking(&s->crit);
   for (uint8_t i = 0; i < POLYPHONY; i++)
     if (s->active[i]) {
-      for (int j = 0; j < audio_buf_half_size; j += 20) {
+      for (int j = 0; j < audio_buf_half_frame; j += 20) {
         sampler_decode(&s->s[i], voice);
         for (int k = 0; k < 20; k++) mix[j + k] += voice[k];
         if (s->s[i].ptr == 0) {
@@ -356,13 +358,14 @@ static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_
     }
   critical_section_exit(&s->crit);
 
-  for (int j = 0; j < audio_buf_half_size; j++) {
+  for (int j = 0; j < audio_buf_half_frame; j++) {
     // 1.5V ~ 2.2V ~ 2.9V (0x4000 ~ 0x6000 ~ 0x7fff)
-    // Divide sample by 128
-    // Note: this should be at least equal to `POLYPHONY` * 4 (dynamic range) = 32
-    int16_t sample = 0x6000 + (mix[j] >> 7);
-    // (R << 16) | L
-    out[j] = (((uint32_t)sample << 16) | (uint32_t)sample);
+    // Divide sample by 128 (>> 7), then shift left by 16 bits
+    // Note: the scaler should be at least equal to
+    //  `POLYPHONY` * 4 (dynamic range, from 0x4000 to 0x7fff) = 32
+    // i.e., 0x60000000 + ((0x7fff * POLYPHONY) << 9) <= 0x7fffffff
+    int32_t sample = 0x60000000 + (mix[j] << 9);
+    out[j * 2] = out[j * 2 + 1] = sample;
   }
 }
 
