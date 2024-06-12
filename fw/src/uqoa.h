@@ -16,7 +16,7 @@ uint64_t qoa_encode_slice(qoa_lms *lms, int16_t samples[20], uint8_t *sf_hint);
 void qoa_decode_slice(qoa_lms *lms, uint64_t slice, int16_t out_samples[20]);
 
 #ifdef uQOA_IMPL
-static int32_t qoa_lms_predict(qoa_lms *lms)
+static inline int32_t qoa_lms_predict(qoa_lms *lms)
 {
   int64_t prediction = 0;
   for (int i = 0; i < 4; i++)
@@ -24,7 +24,7 @@ static int32_t qoa_lms_predict(qoa_lms *lms)
   return prediction >> 11;
 }
 
-static void qoa_lms_update(qoa_lms *lms, int16_t sample, int16_t residual)
+static inline void qoa_lms_update(qoa_lms *lms, int16_t sample, int16_t residual)
 {
   int16_t delta = residual >> 4;
   for (int i = 0; i < 4; i++)
@@ -118,7 +118,7 @@ static inline int16_t qoa_sat_s16(int32_t x)
 // Public API implementations
 // Encoder
 
-void qoa_start_frame(qoa_lms *lms)
+inline void qoa_start_frame(qoa_lms *lms)
 {
   // Cannot check once at the end due to the edge case
   // where all four weights equal 32768 and `sq_sum` wraps around to 0
@@ -137,7 +137,7 @@ void qoa_start_frame(qoa_lms *lms)
   }
 }
 
-uint64_t qoa_encode_slice(qoa_lms *lms, int16_t samples[20], uint8_t *sf_hint)
+inline uint64_t qoa_encode_slice(qoa_lms *lms, int16_t samples[20], uint8_t *sf_hint)
 {
   uint64_t best_error = (uint64_t)-1;
   uint64_t best_slice;
@@ -182,7 +182,7 @@ uint64_t qoa_encode_slice(qoa_lms *lms, int16_t samples[20], uint8_t *sf_hint)
 
 // Decoder
 
-void qoa_decode_slice(qoa_lms *lms, uint64_t slice, int16_t out_samples[20])
+inline void qoa_decode_slice(qoa_lms *lms, uint64_t slice, int16_t out_samples[20])
 {
   uint8_t sf = slice >> 60;
   for (int i = 0; i < 20; i++) {

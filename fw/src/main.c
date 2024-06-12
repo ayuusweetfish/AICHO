@@ -18,6 +18,8 @@
 #define uQOA_IMPL
 #include "uqoa.h"
 
+#define TESTRUN 1
+
 // ============ Debug output ============
 
 static inline void my_putc(uint8_t c)
@@ -205,57 +207,6 @@ void audio_in_init()
 #endif
 }
 
-void consume_buffer(const int32_t *buf)
-{
-  int32_t min = INT32_MAX;
-  int32_t max = INT32_MIN;
-  for (int i = 0; i < audio_in_buf_half_size; i++) {
-    int32_t value = buf[i] & 0xffffff00;
-    if (value > max) max = value;
-    if (value < min) min = value;
-  }
-  uint32_t diff = max - min;
-  gpio_put(act_1, diff >= 0xa0000000);
-
-  static int count = 0;
-
-  static int32_t fft_result[audio_in_buf_half_size / 2 + 1][2];
-  fft(buf, &fft_result[0][0]);
-
-  // FFT bins = 0 ~ 1024, from 0 to Nyquist freq. 25.78125 kHz
-  // each bin corresponds to 25.177 Hz
-
-  static uint32_t ampl[audio_in_buf_half_size / 2 + 1];
-  for (int i = 0; i <= audio_in_buf_half_size / 2; i++)
-    ampl[i] =
-      (uint32_t)((
-        (int64_t)fft_result[i][0] * fft_result[i][0] +
-        (int64_t)fft_result[i][1] * fft_result[i][1]
-      ) >> 32);
-
-  if (++count >= 0.2 * 51563 / audio_in_buf_half_size) {
-  /*
-    my_printf("[%8u] p-p %08x, fft[789] %d\n",
-      to_ms_since_boot(get_absolute_time()),
-      diff, ampl[789]
-    );
-  */
-    my_printf("[%8u] p-p %10u |", to_ms_since_boot(get_absolute_time()), diff);
-    for (int i = 512; i <= 1024; i += 8) {
-      uint32_t sum = 0;
-      for (int j = i; j < i + 8; j++) sum += ampl[j];
-      sum /= 8;
-      my_printf("%c",
-        sum >= 300 ? '#' :
-        sum >= 100 ? '*' :
-        sum >=  25 ? '.' :
-        ' ');
-    }
-    my_printf("|\n");
-    count = 0;
-  }
-}
-
 void audio_in_suspend()
 {
   channel_config_set_enable(&dma_ch8, false);
@@ -288,6 +239,7 @@ struct sampler {
   uint32_t ptr;
 };
 
+#pragma gcc optimize("O3")
 static inline void sampler_decode(struct sampler *s, int16_t out[20])
 {
   if (s->ptr % (256 * 8) == 0) {
@@ -304,7 +256,7 @@ static inline void sampler_decode(struct sampler *s, int16_t out[20])
   if ((s->ptr += 8) >= s->len) s->ptr = 0;
 }
 
-#define POLYPHONY 8
+#define POLYPHONY 4
 struct polyphonic_sampler {
   critical_section_t crit;
   struct sampler s[POLYPHONY];
@@ -351,6 +303,7 @@ static inline uint8_t polyphonic_trigger(
 
 // Fixed size `audio_buf_half_size` (count of s32's) / `audio_buf_half_frame` (count of sample frames)
 // Representation is s32, but pointer type is u32 to unify all data buffers
+#pragma gcc optimize("O3")
 static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_t *restrict out)
 {
   assert(audio_buf_half_frame % 20 == 0);
@@ -555,31 +508,38 @@ int main()
   my_printf("flash_test_write() at %08x\n", &flash_test_write);
   // while (1) { } // Uncomment when uploading the data
 
-  fft_init();
-
-/*
-  static uint32_t buf[audio_in_buf_half_size] = { 0 };
-  static int32_t fft_result[audio_in_buf_half_size / 2 + 1][2];
-  int32_t t0 = to_ms_since_boot(get_absolute_time());
+if (0) {
+  struct polyphonic_sampler ps1;
+  polyphonic_init(&ps1);
+  for (int dir = 0; dir < 2; dir++)
+    for (int org = 0; org < 4; org++)
+      polyphonic_trigger(&ps1,
+        organism_sounds[org][dir][0],
+        organism_sounds[org][dir][1]);
+  uint32_t buf[audio_buf_half_size];
+  uint32_t t0 = to_ms_since_boot(get_absolute_time());
   for (int i = 0; i < 1000; i++) {
-    fft(buf, &fft_result[0][0]);
-    if ((i + 1) % 100 == 0) {
-      int32_t t1 = to_ms_since_boot(get_absolute_time());
-      my_printf("%d - %u\n", i + 1, t1 - t0);
+    polyphonic_out(&ps1, buf);
+    if ((i + 1) % 50 == 0) {
+      uint32_t t1 = to_ms_since_boot(get_absolute_time());
+      my_printf("%4d %8u\n", i + 1, t1 - t0);
       t0 = t1;
-      gpio_put(act_1, (i / 100) & 1);
     }
   }
   while (1) { }
-*/
+}
 
   multicore_reset_core1();
   multicore_fifo_pop_blocking();
   multicore_launch_core1(core1_entry);
 
-/*
+  fft_init();
   pump_init();
+  leds_init();
+  tuh_init(BOARD_TUH_RHPORT);
 
+#if TESTRUN
+/*
   while (1) {
     pump(3, -1); gpio_put(act_1, 0); sleep_ms(1800);
     pump(3,  0); gpio_put(act_1, 0); sleep_ms(500);
@@ -587,14 +547,11 @@ int main()
     pump(3,  0); gpio_put(act_1, 0); sleep_ms(500);
   }
 
-  tuh_init(BOARD_TUH_RHPORT);
   while (1) {
     tuh_task();
   }
   while (1) { }
 */
-
-  leds_init();
 
   uint8_t a[20][4][3] = {{{ 0 }}};
   while (1) {
@@ -610,7 +567,7 @@ int main()
     leds_blast(a, 20);
     sleep_ms(500);
   }
-
+#endif
 }
 
 struct polyphonic_sampler ps1;
@@ -625,16 +582,22 @@ void core1_entry()
   audio_in_init();
   audio_in_resume();
 
-  polyphonic_trigger(&ps1,
-    FILE_ADDR_Lorivox_In_bin,
-    FILE_SIZE_Lorivox_In_bin);
+/*
+  for (int dir = 0; dir < 2; dir++)
+    for (int org = 0; org < 4; org++)
+      polyphonic_trigger(&ps1,
+        organism_sounds[org][dir][0],
+        organism_sounds[org][dir][1]);
+*/
 
+#if TESTRUN
   while (1) {
-    gpio_put(act_2, 1); sleep_ms(100);
-    gpio_put(act_2, 0); sleep_ms(200);
     static uint32_t i = 0;
     i++;
-    // my_printf("Hello, UART %u!%c", i, i % 2 == 0 ? '\n' : '\t');
+    gpio_put(act_2, 1); sleep_ms(100);
+    gpio_put(act_2, 0); sleep_ms(200);
+    my_printf("[%8u] Hello, UART %u!\n", to_ms_since_boot(get_absolute_time()), i);
+    irq_set_enabled(DMA_IRQ_0, false);  // Defer audio output block-filling interrupts
     if (i % 10 == 3) {
       int org = ((i / 10 + 1) / 2) % 6;
       int dir = (i / 10 + 1) % 2;
@@ -651,52 +614,63 @@ void core1_entry()
           organism_sounds[org][dir][1]);
       }
     }
+    irq_set_enabled(DMA_IRQ_0, true);
   }
+#endif
 }
 
 void refill_buffer(uint32_t *buf)
 {
   polyphonic_out(&ps1, buf);
+}
 
-/*
-  assert(audio_buf_half_size % 100 == 0);
-  for (int i = 0; i < audio_buf_half_size; i += 200) {
-    for (int j =   0; j <  50; j++) buf[i + j] = 0x00000000;
-    for (int j =  50; j < 100; j++) buf[i + j] = 0x10000000;
-    for (int j = 100; j < 150; j++) buf[i + j] = 0x00001000;
-    for (int j = 150; j < 200; j++) buf[i + j] = 0x10001000;
+void consume_buffer(const int32_t *buf)
+{
+  int32_t min = INT32_MAX;
+  int32_t max = INT32_MIN;
+  for (int i = 0; i < audio_in_buf_half_size; i++) {
+    int32_t value = buf[i] & 0xffffff00;
+    if (value > max) max = value;
+    if (value < min) min = value;
   }
-*/
+  uint32_t diff = max - min;
+  gpio_put(act_1, diff >= 0xa0000000);
 
-/*
-  static float phase = 0;
-  for (int i = 0; i < audio_buf_half_size; i++) {
-    phase += M_PI * 2 / 48000 * 660;
-    int16_t sample = (int16_t)(0.5f + 32767.0f * 0.1f * (1.0f + sinf(phase)) / 2);
-    buf[i] = ((uint32_t)(uint16_t)sample << 16) | (uint32_t)(uint16_t)sample;
-  }
-  if (phase >= M_PI * 2) phase -= M_PI * 2;
-*/
-/*
-  static float block[1200]; // audio_buf_half_size
-  static bool initialised = false;
-  if (!initialised) {
-    for (int i = 0; i < audio_buf_half_size; i++) {
-      // 48 kHz / 1200 * 20 = 800 Hz
-      float phase = M_PI * 2 * i / audio_buf_half_size * 20;
-      int16_t sample = (int16_t)(16383.5f + 16384.0f * 0.01f * sinf(phase));
-    #if BOARD_REV == 1
-      sample >>= 3;
-    #endif
-      block[i] = ((uint32_t)(uint16_t)sample << 16) | (uint32_t)(uint16_t)sample;
-    }
-  }
   static int count = 0;
-  if (count < 80) {
-    for (int i = 0; i < audio_buf_half_size; i++) buf[i] = block[i];
-  } else {
-    for (int i = 0; i < audio_buf_half_size; i++) buf[i] = (i % 60 < 30 ? 0x60806080 : 0x60006000);
+
+  static int32_t fft_result[audio_in_buf_half_size / 2 + 1][2];
+  fft(buf, &fft_result[0][0]);
+
+  // FFT bins = 0 ~ 1024, from 0 to Nyquist freq. 25.78125 kHz
+  // each bin corresponds to 25.177 Hz
+
+  static uint32_t ampl[audio_in_buf_half_size / 2 + 1];
+  for (int i = 0; i <= audio_in_buf_half_size / 2; i++)
+    ampl[i] =
+      (uint32_t)((
+        (int64_t)fft_result[i][0] * fft_result[i][0] +
+        (int64_t)fft_result[i][1] * fft_result[i][1]
+      ) >> 32);
+
+  if (++count >= 0.2 * 51563 / audio_in_buf_half_size) {
+  /*
+    my_printf("[%8u] p-p %08x, fft[789] %d\n",
+      to_ms_since_boot(get_absolute_time()),
+      diff, ampl[789]
+    );
+  */
+    my_printf("[%8u] p-p %10u |", to_ms_since_boot(get_absolute_time()), diff);
+    for (int i = 512; i <= 1024; i += 8) {
+      uint32_t sum = 0;
+      for (int j = i; j < i + 8; j++) sum += ampl[j];
+      sum /= 8;
+      my_printf("%c",
+        sum >= 300 ? '#' :
+        sum >= 100 ? '*' :
+        sum >=  25 ? '.' :
+        ' ');
+    }
+    my_printf("|\n");
+    count = 0;
   }
-  if (++count == 160) count = 0;
-*/
 }
