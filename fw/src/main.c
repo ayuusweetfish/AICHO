@@ -364,7 +364,8 @@ void leds_init()
 void leds_blast(uint8_t a[][4][3], int n)
 {
   // Little-endian, PIO shifts right
-  static uint8_t leds_buf[80][12];
+  static uint8_t leds_buf[96][12];
+  assert(n <= sizeof leds_buf / sizeof leds_buf[0]);
 
   for (int i = 0; i < n; i++) {
     // G
