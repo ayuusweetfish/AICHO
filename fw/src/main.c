@@ -20,6 +20,8 @@
 #define uQOA_IMPL
 #include "uqoa.h"
 
+#include "leds.h"
+
 #define TESTRUN 0
 
 #define max(_a, _b) ((_a) > (_b) ? (_a) : (_b))
@@ -573,6 +575,17 @@ if (0) {
   while (1) { }
 }
 
+  // Lorivox seems to have a pop in the exhale sound
+  // turns out to be due to power supply limitations -- not present with valves/pumps removed
+/*
+  polyphonic_trigger(&ps1,
+    FILE_ADDR_Lorivox_Ex_bin,
+    FILE_SIZE_Lorivox_Ex_bin);
+  uint32_t buf[audio_buf_half_size];
+  polyphonic_out(&ps1, buf);
+  for (int i = 0; i < 100; i++) my_printf("%4d %08x\n", i, buf[i]);
+*/
+
   fft_init();
   pump_init();
   leds_init();
@@ -580,8 +593,21 @@ if (0) {
 
   multicore_reset_core1();
   multicore_fifo_pop_blocking();
-  // core1_entry(); while (1) { }
   multicore_launch_core1(core1_entry);
+
+/*
+  sleep_ms(1000);
+  gpio_put(act_1, 1);
+  polyphonic_trigger(&ps1,
+    FILE_ADDR_Lorivox_In_bin,
+    FILE_SIZE_Lorivox_In_bin);
+  sleep_ms(1000);
+  gpio_put(act_1, 0);
+  polyphonic_trigger(&ps1,
+    FILE_ADDR_Lorivox_Ex_bin,
+    FILE_SIZE_Lorivox_Ex_bin);
+  while (1) sleep_ms(1000);
+*/
 
   // See `pump()` signal values
   int pump_dir_signals[4] = { 0 };
@@ -605,28 +631,24 @@ if (0) {
       int last_phase = (state_time == 0 ? -1 : state_time / 2000);
       state_time += t;
       int cur_phase = state_time / 2000;
-      if (state_time >= 16000) {
+      if (state_time >= 18000) {
         state = IDLE;
         for (int i = 0; i < 4; i++)
           pump_dir_signals[i] = +1;
       } else if (cur_phase != last_phase) {
         if (cur_phase < 4) {
           pump_dir_signals[org_id] = (cur_phase % 2 == 0 ? +2 : -2);
-          // irq_set_enabled(DMA_IRQ_0, false);
           polyphonic_trigger(&ps1,
             organism_sounds[org_id][cur_phase % 2][0],
             organism_sounds[org_id][cur_phase % 2][1]);
-          // irq_set_enabled(DMA_IRQ_0, true);
-        } else {
+        } else if (cur_phase < 8) {
           for (int i = 0; i < 4; i++)
             pump_dir_signals[i] = (cur_phase % 2 == 0 ? +2 : -2);
 
-          // irq_set_enabled(DMA_IRQ_0, false);
           for (int org_id = 0; org_id < 4; org_id++)
             polyphonic_trigger(&ps1,
               organism_sounds[org_id][cur_phase % 2][0],
               organism_sounds[org_id][cur_phase % 2][1]);
-          // irq_set_enabled(DMA_IRQ_0, true);
         }
       }
     } else if (state == FOLLOWER_RUN) {
@@ -708,6 +730,17 @@ if (0) {
     return (struct proceed_t){task_update_signals, 1000}; // 1 ms
   }
 
+  static int32_t air[4] = { 0 };
+  static int32_t wait[4] = { 0 }; // How long has been waited for at -1 signal
+  static const struct {
+    uint32_t air_limit, inflate_rate, leakage, drain_rate;
+  } rates[4] = {
+    {30000, 10, 3, 10},
+    {20000, 10, 3, 10},
+    {20000, 10, 3, 10},
+    {20000, 10, 3, 10},
+  };
+
   struct proceed_t task_pumps(uint32_t missed) {
     static bool startup = true;
     if (startup) {
@@ -717,16 +750,6 @@ if (0) {
       return (struct proceed_t){task_pumps, 2500000};
     }
 
-    static int32_t air[4] = { 0 };
-    static int32_t wait[4] = { 0 }; // How long has been waited for at -1 signal
-    static const struct {
-      uint32_t air_limit, inflate_rate, leakage, drain_rate;
-    } rates[4] = {
-      {30000, 10, 3, 10},
-      {20000, 10, 3, 10},
-      {20000, 10, 3, 10},
-      {20000, 10, 3, 10},
-    };
     if (missed > 0) {
       // my_printf("missed %u\n", missed);
       for (int i = 0; i < 4; i++) switch (pump_last_op[i]) {
@@ -781,11 +804,19 @@ if (0) {
   struct proceed_t task_leds(uint32_t _missed) {
     uint8_t a[96][4][3] = {{{ 0 }}};
     static uint32_t n = 0;
-    for (int strip = 0; strip < 4; strip++) {
+    for (int strip = 1; strip < 4; strip++) {
       for (int i = 0; i < 96; i++) {
         int32_t x = 4 - (int32_t)(i + strip + n / 8) % 8;
         a[i][strip][strip % 3] = x < 0 ? -x : x;
       }
+    }
+    if (state == SINGLE_RUN) {
+      if (state_time < 16000)
+        gradient_Lorivox(4096 * air[0] / rates[0].air_limit, a);
+      else
+        gradient_Lorivox(4096 * (state_time - 16000) / 2000, a);
+    } else {
+      gradient_Lorivox(4096, a);
     }
     n++;
     // 96 * 24 / 800 kHz = 2.88 ms
@@ -867,7 +898,6 @@ void core1_entry()
     // gpio_put(act_2, 0); sleep_ms(200);
     sleep_ms(300);
     // my_printf("[%8u] Hello, UART %u!\n", to_ms_since_boot(get_absolute_time()), i);
-    irq_set_enabled(DMA_IRQ_0, false);  // Defer audio output block-filling interrupts
     if (i % 10 == 3) {
       int org = ((i / 10 + 1) / 2) % 6;
       int dir = (i / 10 + 1) % 2;
@@ -884,7 +914,6 @@ void core1_entry()
           organism_sounds[org][dir][1]);
       }
     }
-    irq_set_enabled(DMA_IRQ_0, true);
   }
 #endif
 
