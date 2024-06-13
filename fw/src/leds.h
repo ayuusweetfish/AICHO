@@ -86,6 +86,33 @@ void gradient_Lorivox(int intensity, uint8_t out[][4][3])
   }
 }
 
+#define LED_N_Lumisonic 69
+void gradient_Lumisonic(int intensity, int progress, uint8_t out[][4][3])
+{
+  for (int i = 0; i < LED_N_Lumisonic; i++) {
+    out[i][1][0] = out[i][1][1] = out[i][1][2] = 0;
+  }
+
+  int waveLength = 10;
+  int waveStart = -waveLength + (long)(LED_N_Lumisonic + waveLength) * progress / 8192;
+
+  for (int i = 0; i < waveLength; i++) {
+    int pos = waveStart + i;
+    if (pos >= LED_N_Lumisonic) break;
+    if (pos < 0) continue;
+    int brightness = i * intensity * 255 / (waveLength - 1) / 4096 / 4;
+
+    CRGB blended = (CRGB){
+      144 * brightness / 255,
+      128 * brightness / 255,
+      255 * brightness / 255,
+    };
+    out[pos][1][0] = blended.r;
+    out[pos][1][1] = blended.g;
+    out[pos][1][2] = blended.b;
+  }
+}
+
 #define LED_N_Harmonia 30
 void gradient_Harmonia(int intensity, uint8_t out[][4][3]) {
   for (int i = 0; i < LED_N_Harmonia; i++) {

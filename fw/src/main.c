@@ -816,23 +816,32 @@ if (0) {
         int intensity = (state_time >= 500 ? 0 :
           4096 * (500 - state_time) / 500 * (500 - state_time) / 500);
         gradient_Lorivox(intensity, a);
+        gradient_Lumisonic(intensity, 3200, a);
         gradient_Harmonia(intensity, a);
         gradient_Titanus(intensity, a);
         // Replace the active organism(s) with their active animations
         if (org_id == 0 || state_time >= 8000)
           gradient_Lorivox(4096 * air[0] / rates[0].air_limit, a);
+        if (org_id == 1 || state_time >= 8000) {
+          int lum_progress = (state_time % 4000) * 8192 / 4000;
+          gradient_Lumisonic(4096, lum_progress, a);
+        }
         if (org_id == 2 || state_time >= 8000)
           gradient_Harmonia(4096 * air[2] / rates[2].air_limit, a);
         if (org_id == 3 || state_time >= 8000)
           gradient_Titanus(4096 * air[3] / rates[3].air_limit, a);
       } else {
         int intensity = 4096 * (state_time - 16000) / 4000;
+        float x = (float)(state_time - 16000) / 4000;
+        int lum_progress = 3200 * (1 - (1 - x) * (1 - x));
         gradient_Lorivox(intensity, a);
+        gradient_Lumisonic(intensity, lum_progress, a);
         gradient_Harmonia(intensity, a);
         gradient_Titanus(intensity, a);
       }
     } else {
       gradient_Lorivox(4096, a);
+      gradient_Lumisonic(4096, 3200, a);
       gradient_Harmonia(4096, a);
       gradient_Titanus(4096, a);
     }
