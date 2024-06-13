@@ -8,6 +8,7 @@
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "tusb.h"
 
@@ -534,14 +535,15 @@ if (0) {
   while (1) { }
 }
 
-  multicore_reset_core1();
-  multicore_fifo_pop_blocking();
-  // multicore_launch_core1(core1_entry);
-
   fft_init();
   pump_init();
   leds_init();
   tuh_init(BOARD_TUH_RHPORT);
+
+  multicore_reset_core1();
+  multicore_fifo_pop_blocking();
+  // core1_entry(); while (1) { }
+  multicore_launch_core1(core1_entry);
 
   // See `pump()` signal values
   int pump_dir_signals[4] = { 0 };
@@ -671,22 +673,6 @@ if (0) {
       if (soonest_diff > 5) sleep_us(soonest_diff - 5);
     }
   }
-
-#if TESTRUN
-/*
-  while (1) {
-    pump(3, -1); gpio_put(act_1, 0); sleep_ms(1800);
-    pump(3,  0); gpio_put(act_1, 0); sleep_ms(500);
-    pump(3, +1); gpio_put(act_1, 1); sleep_ms(1800);
-    pump(3,  0); gpio_put(act_1, 0); sleep_ms(500);
-  }
-
-  while (1) {
-    tuh_task();
-  }
-  while (1) { }
-*/
-#endif
 }
 
 struct polyphonic_sampler ps1;
@@ -713,8 +699,9 @@ void core1_entry()
   while (1) {
     static uint32_t i = 0;
     i++;
-    gpio_put(act_2, 1); sleep_ms(100);
-    gpio_put(act_2, 0); sleep_ms(200);
+    // gpio_put(act_2, 1); sleep_ms(100);
+    // gpio_put(act_2, 0); sleep_ms(200);
+    sleep_ms(300);
     // my_printf("[%8u] Hello, UART %u!\n", to_ms_since_boot(get_absolute_time()), i);
     irq_set_enabled(DMA_IRQ_0, false);  // Defer audio output block-filling interrupts
     if (i % 10 == 3) {
@@ -736,6 +723,8 @@ void core1_entry()
     irq_set_enabled(DMA_IRQ_0, true);
   }
 #endif
+
+  while (1) sleep_ms(1000);
 }
 
 void refill_buffer(uint32_t *buf)
@@ -771,7 +760,63 @@ void consume_buffer(const int32_t *buf)
         (int64_t)fft_result[i][1] * fft_result[i][1]
       ) >> 32);
 
-  if (++count >= 0.2 * 51563 / audio_in_buf_half_size) {
+  int64_t sum_lo = 0;
+  for (uint32_t j = 1; j <= 32; j++) sum_lo += ampl[j];
+  int64_t sum_mid = 0;
+  for (uint32_t j = 100; j <= 280; j++) sum_mid += ampl[j];
+  int64_t sum_hi = 0;
+  for (uint32_t j = 640; j <= 1024; j++) sum_hi += ampl[j];
+
+  static int64_t hi_ema = 0;
+  hi_ema += (sum_hi - hi_ema) / 8;
+
+  uint32_t sat_add_u32(uint32_t a, uint32_t b) {
+    return (a + b < a) ? UINT32_MAX : a + b;
+  }
+
+  static uint32_t bins[audio_in_buf_half_size / 2];
+  // From 6.6 kHz = 280-th coefficient
+  // To 15 kHz = 640-th coefficient
+  for (uint32_t i = 70; i < 160; i++) {
+    uint32_t sum = 0;
+    for (int j = i * 4 + 1; j <= i * 4 + 4; j++) sum = sat_add_u32(sum, ampl[j]);
+    bins[i - 70] = sum;
+  }
+  int uint32_compare_desc(const void *a, const void *b) {
+    return *(const uint32_t *)b - *(const uint32_t *)a;
+  }
+  qsort(bins, 90, sizeof(uint32_t), uint32_compare_desc);
+
+  static uint32_t accum = 0;
+  static uint32_t in_cycle = 0;
+  static bool signal = false;
+  // if (diff >= 0xa0000000)
+  //   accum += (diff - 0xa0000000) >> 8; // max. 0x600000 = 6291456
+
+/*
+  if (bins[20] + bins[40] >= 3000)
+    accum += (min(10000, bins[20] + bins[40] - 3000) << 12); // 4096000 for each extra 1000
+  if (bins[5] >= 3000)
+    accum += (min(10000, bins[5] - 3000) << 12);
+
+  if (sum_lo >= 15000000)
+    accum += min((sum_lo - 15000000) >> 8, 2000000);
+*/
+
+  if (bins[5] >= 3000)
+    accum += (min(10000, bins[5] - 3000) << 12);
+
+  if (++in_cycle == 2) {
+    if (!signal && accum >= 0x1000000) signal = true;
+    else if (signal && accum < 0x400000) signal = false;
+    gpio_put(act_2, signal);
+    accum >>= 1;
+    in_cycle = 0;
+  }
+
+  // gpio_put(act_2, bins[20] + bins[40] >= 6000);
+
+  if (++count >= 0.2 * 51563 / audio_in_buf_half_size && in_cycle == 0) {
   /*
     my_printf("[%8u] p-p %10u |", to_ms_since_boot(get_absolute_time()), diff);
     for (int i = 512; i <= 1024; i += 8) {
@@ -786,6 +831,33 @@ void consume_buffer(const int32_t *buf)
     }
     my_printf("|\n");
   */
+    my_printf("[%8u] | ", to_ms_since_boot(get_absolute_time()));
+    if (0)
+      my_printf("%d %3d %3d %8d\n",
+        bins[20] / 256 >= 20,
+        ((uint64_t)bins[40] * 10000 / (sum_mid + 1) /* >= 5 */),
+        ((bins[10] - bins[20]) * 10 / (bins[30] - bins[50] + 1) /* <= 150 */),
+        (llabs(sum_hi - hi_ema) /* <= 500000 */)
+      );
+
+    my_printf("%8x | %6u %6u %6u |",
+      accum,
+      (uint32_t)min(999999, sum_lo / 1000),
+      (uint32_t)min(999999, sum_mid / 100),
+      (uint32_t)min(999999, sum_hi)
+    );
+    uint32_t pivot = bins[30];
+    for (int i = 0; i < 90; i += 5)
+      // my_printf(" %5u", min(99999, (uint32_t)((uint64_t)bins[i] * 1000 / pivot)));
+      my_printf(" %5u", min(99999, bins[i]));
+
+  /*
+    my_printf("\n           | ");
+    for (int i = 1; i < 10; i += 1)
+      my_printf(" %5u", min(99999, ampl[i] / 100));
+  */
+
+    my_printf("\n");
     count = 0;
   }
 }
