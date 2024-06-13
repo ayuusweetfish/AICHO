@@ -18,6 +18,9 @@
 #define uQOA_IMPL
 #include "uqoa.h"
 
+#define max(_a, _b) ((_a) > (_b) ? (_a) : (_b))
+#define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
+
 #define TESTRUN 1
 
 // ============ Debug output ============
@@ -468,13 +471,16 @@ static inline void pump_init()
   }
 }
 
+// +2: inflate
+// +1: hold, solenoid off (standby)
+// -1: hold, solenoid on (minor air leakage)
+// -2: drain
 static inline void pump(int org_index, int dir)
 {
   // Solenoid on -> air can get out
-  gpio_put(air_outputs[org_index].solenoid, dir != +1);
-  sleep_ms(100);
-  gpio_put(air_outputs[org_index].pump_inflate, dir == +1);
-  gpio_put(air_outputs[org_index].pump_drain, dir == -1);
+  gpio_put(air_outputs[org_index].solenoid, dir < 0);
+  gpio_put(air_outputs[org_index].pump_inflate, dir == +2);
+  gpio_put(air_outputs[org_index].pump_drain, dir == -2);
 }
 
 // ============ Entry point ============
@@ -530,12 +536,21 @@ if (0) {
 
   multicore_reset_core1();
   multicore_fifo_pop_blocking();
-  multicore_launch_core1(core1_entry);
+  // multicore_launch_core1(core1_entry);
 
   fft_init();
   pump_init();
   leds_init();
   tuh_init(BOARD_TUH_RHPORT);
+
+  // +1: inflate
+  //  0: hold
+  // -1: drain
+  int pump_dir_signals[4] = { 0 };
+
+  void update_signals() {
+    pump_dir_signals[0] = (org_key[0] ? +1 : org_key[1] ? -1 : 0);
+  }
 
   // Task pool
   struct proceed_t {
@@ -550,10 +565,46 @@ if (0) {
 
   struct proceed_t task_usb() {
     tuh_task();
+    update_signals();
     return (struct proceed_t){task_usb, 1000};    // 1 ms
   }
 
   struct proceed_t task_pumps() {
+    static bool startup = true;
+    if (startup) {
+      // Drain remaining air
+      for (int i = 0; i < 4; i++) pump(i, -2);
+      startup = false;
+      return (struct proceed_t){task_pumps, 2500000};
+    }
+
+    static int32_t air[4] = { 0 };
+    static int32_t wait[4] = { 0 }; // How long has been waited for at -1 signal
+    for (int i = 0; i < 4; i++) {
+      if (pump_dir_signals[i] == +1) {
+        if (air[i] < 30000) {
+          pump(i, +2);
+          air[i] += 10;
+        } else {
+          pump(i, +1);
+        }
+        wait[i] = 0;
+      } else if (pump_dir_signals[i] == -1) {
+        if (wait[i] >= 100) {
+          pump(i, -2);
+          air[i] = max(0, air[i] - 10);
+        } else {
+          pump(i, -1);
+          wait[i] += 1;
+          air[i] = max(0, air[i] - 4);
+        }
+      } else {
+        // Hold
+        pump(i, 0);
+        wait[i] = 0;
+      }
+    }
+
     return (struct proceed_t){task_pumps, 1000};  // 1 ms
   };
 
@@ -686,7 +737,7 @@ void consume_buffer(const int32_t *buf)
     if (value < min) min = value;
   }
   uint32_t diff = max - min;
-  gpio_put(act_1, diff >= 0xa0000000);
+  // gpio_put(act_1, diff >= 0xa0000000);
 
   static int count = 0;
 

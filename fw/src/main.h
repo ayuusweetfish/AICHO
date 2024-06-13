@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifndef BOARD_REV
@@ -22,3 +23,6 @@ int my_printf(const char *restrict fmt, ...);
 #define FFT_N 2048
 void fft_init();
 void fft(const int32_t *restrict in, int32_t *restrict out);
+
+// usb_host.c
+extern bool org_key[4];

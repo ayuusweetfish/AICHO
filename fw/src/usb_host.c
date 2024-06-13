@@ -3,6 +3,8 @@
 #include "pico/stdlib.h"
 #include "tusb.h"
 
+bool org_key[4] = { false };
+
 #define printf my_printf
 
 void tuh_mount_cb(uint8_t dev_addr)
@@ -174,7 +176,7 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
     // TODO example skips key released
   }
 
-  bool org_key[4] = { false };
+  memset(org_key, false, sizeof org_key);
   for (int i = 0; i < 6; i++)
     if (report->keycode[i] == HID_KEY_Q) org_key[0] = true;
     else if (report->keycode[i] == HID_KEY_W) org_key[1] = true;
