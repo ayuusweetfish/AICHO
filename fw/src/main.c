@@ -559,11 +559,57 @@ if (0) {
   // See `pump()` signal values
   int pump_dir_signals[4] = { 0 };
 
+  enum state_t {
+    IDLE,
+    SINGLE_RUN,
+    FOLLOWER_RUN,
+  } state = IDLE;
+  int8_t org_id;        // For `SINGLE_RUN` and `FOLLOWER_RUN`
+  uint32_t state_time;  // Duration into the current state, invalid for `IDLE`
+
+  // Updates `pump_dir_signals` from `org_key` and breath signals (TODO)
   void update_signals() {
     // Q - inflate
     // W - drain
     // E - leak
-    pump_dir_signals[0] = (org_key[0] ? +2 : org_key[1] ? -2 : org_key[2] ? -1 : +1);
+    // pump_dir_signals[0] = (org_key[0] ? +2 : org_key[1] ? -2 : org_key[2] ? -1 : +1);
+
+    static int pressed_key = -1;
+    static int pressed_dur = 0;
+
+    int cur_pressed_key = -1;
+    for (int i = 0; i < 4; i++)
+      if (org_key[i]) { cur_pressed_key = i; break; }
+    if (cur_pressed_key != -1) {
+      // One key pressed
+      if (cur_pressed_key == pressed_key) {
+        // Held
+        pressed_dur += 1;
+        if (pressed_dur == 500) {
+          my_printf("long %d start\n", pressed_key);
+        }
+      } else if (pressed_key == -1) {
+        // Newly pressed
+        pressed_key = cur_pressed_key;
+        pressed_dur = 0;
+      } else {
+        // Release from a multiple press / quick switch
+        // Treat as a release for the current update; leave the press event for next time
+        cur_pressed_key = -1;
+      }
+    }
+    if (cur_pressed_key == -1) {
+      // No key pressed
+      if (pressed_key != -1) {
+        // Release
+        if (pressed_dur < 500) {
+          my_printf("short %d\n", pressed_key);
+        } else {
+          my_printf("long %d end\n", pressed_key);
+        }
+      }
+      pressed_key = -1;
+    }
   }
 
   // Task pool
