@@ -760,26 +760,24 @@ void consume_buffer(const int32_t *buf)
         (int64_t)fft_result[i][1] * fft_result[i][1]
       ) >> 32);
 
-  int64_t sum_lo = 0;
-  for (uint32_t j = 1; j <= 32; j++) sum_lo += ampl[j];
-  int64_t sum_mid = 0;
-  for (uint32_t j = 100; j <= 280; j++) sum_mid += ampl[j];
-  int64_t sum_hi = 0;
-  for (uint32_t j = 640; j <= 1024; j++) sum_hi += ampl[j];
-
   uint64_t enr_total = 0;
   for (uint32_t j = 100; j <= 280; j++) enr_total += ampl[j];
 
+  int64_t sum_hi = 0;
+  for (uint32_t j = 640; j <= 1024; j++) sum_hi += ampl[j];
   static int64_t hi_ema = 0;
   hi_ema += (sum_hi - hi_ema) / 8;
 
   uint32_t sat_add_u32(uint32_t a, uint32_t b) {
     return (a + b < a) ? UINT32_MAX : a + b;
   }
+  uint32_t sat_sub_u32(uint32_t a, uint32_t b) {
+    return (a < b ? 0 : a - b);
+  }
 
   static uint32_t bins[audio_in_buf_half_size / 2];
-  // From 6.6 kHz = 280-th coefficient
-  // To 15 kHz = 640-th coefficient
+  // From 7 kHz = 280-th coefficient
+  // To 16 kHz = 640-th coefficient
   for (uint32_t i = 70; i < 160; i++) {
     uint32_t sum = 0;
     for (int j = i * 4 + 1; j <= i * 4 + 4; j++) sum = sat_add_u32(sum, ampl[j]);
@@ -794,30 +792,22 @@ void consume_buffer(const int32_t *buf)
   static uint32_t accum = 0;
   static bool signal = false;
   static uint32_t held = 0;
-  // if (diff >= 0xa0000000)
-  //   accum += (diff - 0xa0000000) >> 8; // max. 0x600000 = 6291456
 
-/*
-  if (bins[20] + bins[40] >= 3000)
-    accum += (min(10000, bins[20] + bins[40] - 3000) << 12); // 4096000 for each extra 1000
-  if (bins[5] >= 3000)
-    accum += (min(10000, bins[5] - 3000) << 12);
-
-  if (sum_lo >= 15000000)
-    accum += min((sum_lo - 15000000) >> 8, 2000000);
-*/
-
-  if (bins[ 5] >= 300)
-    accum += (min(50, bins[ 5] - 300) << 14);
+  if (bins[ 5] >= 400)
+    accum += (min(50, bins[ 5] - 400) << 14);
   if (bins[40] >= 100)
     accum += (min(50, bins[40] - 100) << 14);
   if (bins[60] >=  50)
     accum += (min(50, bins[60] -  50) << 14);
+  if (bins[70] >= 500)
+    accum = sat_sub_u32(accum, min(50, bins[70] - 500) << 16);
+  if (bins[80] >= 200)
+    accum = sat_sub_u32(accum, min(50, bins[80] - 200) << 16);
 
   if (!signal) {
     if (accum >= 0x200000) signal = true;
   } else {
-    if (accum < 0x200000 - held * 0x6000) {
+    if (accum < 0x1a0000 - held * 0x5000) {
       signal = false;
       held = 0;
     } else {
@@ -826,8 +816,6 @@ void consume_buffer(const int32_t *buf)
   }
   gpio_put(act_2, signal);
   accum >>= 1;
-
-  // gpio_put(act_2, bins[20] + bins[40] >= 6000);
 
   if (++count >= 0.2 * 51563 / audio_in_buf_half_size) {
   /*
@@ -845,32 +833,14 @@ void consume_buffer(const int32_t *buf)
     my_printf("|\n");
   */
     my_printf("[%8u] | ", to_ms_since_boot(get_absolute_time()));
-    if (0)
-      my_printf("%d %3d %3d %8d\n",
-        bins[20] / 256 >= 20,
-        ((uint64_t)bins[40] * 10000 / (sum_mid + 1) /* >= 5 */),
-        ((bins[10] - bins[20]) * 10 / (bins[30] - bins[50] + 1) /* <= 150 */),
-        (llabs(sum_hi - hi_ema) /* <= 500000 */)
-      );
-
-    my_printf("%8x | %6u %6u %6u %6u |",
+    my_printf("%8x | %6u %6u |",
       accum,
       (uint32_t)min(999999, enr_total / 1000),
-      (uint32_t)min(999999, sum_lo / 1000),
-      (uint32_t)min(999999, sum_mid / 100),
-      (uint32_t)min(999999, sum_hi)
+      (uint32_t)llabs(sum_hi - hi_ema)
     );
     uint32_t pivot = bins[30];
     for (int i = 0; i < 90; i += 5)
-      // my_printf(" %5u", min(99999, (uint32_t)((uint64_t)bins[i] * 1000 / pivot)));
       my_printf(" %5u", min(99999, bins[i]));
-
-  /*
-    my_printf("\n           | ");
-    for (int i = 1; i < 10; i += 1)
-      my_printf(" %5u", min(99999, ampl[i] / 100));
-  */
-
     my_printf("\n");
     count = 0;
   }
