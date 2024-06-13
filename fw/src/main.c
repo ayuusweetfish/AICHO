@@ -464,6 +464,10 @@ void leds_blast(uint8_t a[][4][3], int n)
 #define FILE_SIZE_Titanus_In_bin   154816
 #define FILE_ADDR_Titanus_Ex_bin   1083712
 #define FILE_SIZE_Titanus_Ex_bin   154816
+#define FILE_ADDR_Ensemble_In_bin  1238528
+#define FILE_SIZE_Ensemble_In_bin  154816
+#define FILE_ADDR_Ensemble_Ex_bin  1393344
+#define FILE_SIZE_Ensemble_Ex_bin  154816
 // [index][inhale/exhale][addr/size]
 static const uint32_t organism_sounds[4][2][2] = {
   {{FILE_ADDR_Lorivox_In_bin, FILE_SIZE_Lorivox_In_bin},
@@ -474,6 +478,10 @@ static const uint32_t organism_sounds[4][2][2] = {
    {FILE_ADDR_Harmonia_Ex_bin, FILE_SIZE_Harmonia_Ex_bin}},
   {{FILE_ADDR_Titanus_In_bin, FILE_SIZE_Titanus_In_bin},
    {FILE_ADDR_Titanus_Ex_bin, FILE_SIZE_Titanus_Ex_bin}},
+};
+static const uint32_t ensemble_sounds[2][2] = {
+  {FILE_ADDR_Ensemble_In_bin, FILE_SIZE_Ensemble_In_bin},
+  {FILE_ADDR_Ensemble_Ex_bin, FILE_SIZE_Ensemble_Ex_bin},
 };
 
 // ============ Solenoid valves / pumps output ============
@@ -577,14 +585,6 @@ if (0) {
 
   // Lorivox seems to have a pop in the exhale sound
   // turns out to be due to power supply limitations -- not present with valves/pumps removed
-/*
-  polyphonic_trigger(&ps1,
-    FILE_ADDR_Lorivox_Ex_bin,
-    FILE_SIZE_Lorivox_Ex_bin);
-  uint32_t buf[audio_buf_half_size];
-  polyphonic_out(&ps1, buf);
-  for (int i = 0; i < 100; i++) my_printf("%4d %08x\n", i, buf[i]);
-*/
 
   fft_init();
   pump_init();
@@ -594,20 +594,6 @@ if (0) {
   multicore_reset_core1();
   multicore_fifo_pop_blocking();
   multicore_launch_core1(core1_entry);
-
-/*
-  sleep_ms(1000);
-  gpio_put(act_1, 1);
-  polyphonic_trigger(&ps1,
-    FILE_ADDR_Lorivox_In_bin,
-    FILE_SIZE_Lorivox_In_bin);
-  sleep_ms(1000);
-  gpio_put(act_1, 0);
-  polyphonic_trigger(&ps1,
-    FILE_ADDR_Lorivox_Ex_bin,
-    FILE_SIZE_Lorivox_Ex_bin);
-  while (1) sleep_ms(1000);
-*/
 
   // See `pump()` signal values
   int pump_dir_signals[4] = { 0 };
@@ -645,10 +631,9 @@ if (0) {
           for (int i = 0; i < 4; i++)
             pump_dir_signals[i] = (cur_phase % 2 == 0 ? +2 : -2);
 
-          for (int org_id = 0; org_id < 4; org_id++)
-            polyphonic_trigger(&ps1,
-              organism_sounds[org_id][cur_phase % 2][0],
-              organism_sounds[org_id][cur_phase % 2][1]);
+          polyphonic_trigger(&ps1,
+            ensemble_sounds[cur_phase % 2][0],
+            ensemble_sounds[cur_phase % 2][1]);
         }
       }
     } else if (state == FOLLOWER_RUN) {
@@ -893,7 +878,6 @@ if (0) {
       task_pool[soonest_index].fn = result.fn;
       task_pool[soonest_index].next_tick = max(expected_tick + result.wait, cur_tick + 1);
     } else {
-      // if (soonest_diff > 5) my_printf("[%8u] sleep %lld\n", to_ms_since_boot(get_absolute_time()), soonest_diff);
       if (soonest_diff > 5) sleep_us(soonest_diff - 5);
     }
   }
@@ -908,14 +892,6 @@ void core1_entry()
 
   audio_in_init();
   audio_in_resume();
-
-/*
-  for (int dir = 0; dir < 2; dir++)
-    for (int org = 0; org < 4; org++)
-      polyphonic_trigger(&ps1,
-        organism_sounds[org][dir][0],
-        organism_sounds[org][dir][1]);
-*/
 
 #if TESTRUN
   while (1) {
