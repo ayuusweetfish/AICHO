@@ -767,6 +767,9 @@ void consume_buffer(const int32_t *buf)
   int64_t sum_hi = 0;
   for (uint32_t j = 640; j <= 1024; j++) sum_hi += ampl[j];
 
+  uint64_t enr_total = 0;
+  for (uint32_t j = 100; j <= 280; j++) enr_total += ampl[j];
+
   static int64_t hi_ema = 0;
   hi_ema += (sum_hi - hi_ema) / 8;
 
@@ -780,6 +783,7 @@ void consume_buffer(const int32_t *buf)
   for (uint32_t i = 70; i < 160; i++) {
     uint32_t sum = 0;
     for (int j = i * 4 + 1; j <= i * 4 + 4; j++) sum = sat_add_u32(sum, ampl[j]);
+    sum = (uint64_t)sum * 1000 / (enr_total / 100);
     bins[i - 70] = sum;
   }
   int uint32_compare_desc(const void *a, const void *b) {
@@ -788,8 +792,8 @@ void consume_buffer(const int32_t *buf)
   qsort(bins, 90, sizeof(uint32_t), uint32_compare_desc);
 
   static uint32_t accum = 0;
-  static uint32_t in_cycle = 0;
   static bool signal = false;
+  static uint32_t held = 0;
   // if (diff >= 0xa0000000)
   //   accum += (diff - 0xa0000000) >> 8; // max. 0x600000 = 6291456
 
@@ -803,20 +807,29 @@ void consume_buffer(const int32_t *buf)
     accum += min((sum_lo - 15000000) >> 8, 2000000);
 */
 
-  if (bins[5] >= 3000)
-    accum += (min(10000, bins[5] - 3000) << 12);
+  if (bins[ 5] >= 300)
+    accum += (min(50, bins[ 5] - 300) << 14);
+  if (bins[40] >= 100)
+    accum += (min(50, bins[40] - 100) << 14);
+  if (bins[60] >=  50)
+    accum += (min(50, bins[60] -  50) << 14);
 
-  if (++in_cycle == 2) {
-    if (!signal && accum >= 0x1000000) signal = true;
-    else if (signal && accum < 0x400000) signal = false;
-    gpio_put(act_2, signal);
-    accum >>= 1;
-    in_cycle = 0;
+  if (!signal) {
+    if (accum >= 0x200000) signal = true;
+  } else {
+    if (accum < 0x200000 - held * 0x6000) {
+      signal = false;
+      held = 0;
+    } else {
+      if (held < 40) held++;
+    }
   }
+  gpio_put(act_2, signal);
+  accum >>= 1;
 
   // gpio_put(act_2, bins[20] + bins[40] >= 6000);
 
-  if (++count >= 0.2 * 51563 / audio_in_buf_half_size && in_cycle == 0) {
+  if (++count >= 0.2 * 51563 / audio_in_buf_half_size) {
   /*
     my_printf("[%8u] p-p %10u |", to_ms_since_boot(get_absolute_time()), diff);
     for (int i = 512; i <= 1024; i += 8) {
@@ -840,8 +853,9 @@ void consume_buffer(const int32_t *buf)
         (llabs(sum_hi - hi_ema) /* <= 500000 */)
       );
 
-    my_printf("%8x | %6u %6u %6u |",
+    my_printf("%8x | %6u %6u %6u %6u |",
       accum,
+      (uint32_t)min(999999, enr_total / 1000),
       (uint32_t)min(999999, sum_lo / 1000),
       (uint32_t)min(999999, sum_mid / 100),
       (uint32_t)min(999999, sum_hi)
