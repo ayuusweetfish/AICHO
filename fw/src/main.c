@@ -20,7 +20,7 @@
 #define uQOA_IMPL
 #include "uqoa.h"
 
-#define TESTRUN 1
+#define TESTRUN 0
 
 #define max(_a, _b) ((_a) > (_b) ? (_a) : (_b))
 #define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
@@ -273,44 +273,33 @@ struct polyphonic_sampler {
   critical_section_t crit;
   struct sampler s[POLYPHONY];
   bool active[POLYPHONY];
+
+  struct trigger_queue_el {
+    uint32_t start;
+    uint32_t len;
+  } trigger_queue[POLYPHONY];
+  uint8_t trigger_queue_len;
 };
 
 static inline void polyphonic_init(struct polyphonic_sampler *s)
 {
   critical_section_init(&s->crit);
   for (uint8_t i = 0; i < POLYPHONY; i++) s->active[i] = 0;
+  s->trigger_queue_len = 0;
 }
 
 static inline uint8_t polyphonic_trigger(
   struct polyphonic_sampler *s,
   uint32_t start, uint32_t len
 ) {
-  // critical_section_enter_blocking(&s->crit);
-
-  // Find a voice
-  uint8_t voice_id = 0xff;
-  for (uint8_t i = 0; i < POLYPHONY; i++)
-    if (!s->active[i]) {
-      voice_id = i;
-      break;
-    }
-  if (voice_id == 0xff) {
-    // Steal a random voice
-    for (uint8_t i = 0; i < POLYPHONY - 1; i++) {
-      s->s[i] = s->s[i + 1];
-      // `active[i]` is true
-    }
-    voice_id = POLYPHONY - 1;
+  critical_section_enter_blocking(&s->crit);
+  if (s->trigger_queue_len < POLYPHONY) {
+    s->trigger_queue[s->trigger_queue_len++] = (struct trigger_queue_el){
+      .start = start,
+      .len = len,
+    };
   }
-
-  s->s[voice_id] = (struct sampler){
-    .start = start,
-    .len = len,
-    .ptr = 0,
-  };
-  s->active[voice_id] = true;
-
-  // critical_section_exit(&s->crit);
+  critical_section_exit(&s->crit);
 }
 
 // Fixed size `audio_buf_half_size` (count of s32's) / `audio_buf_half_frame` (count of sample frames)
@@ -318,12 +307,49 @@ static inline uint8_t polyphonic_trigger(
 #pragma gcc optimize("O3")
 static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_t *restrict out)
 {
+  // Process triggers
+
+  critical_section_enter_blocking(&s->crit);
+
+  for (int i = 0; i < s->trigger_queue_len; i++) {
+    uint32_t start = s->trigger_queue[i].start;
+    uint32_t len = s->trigger_queue[i].len;
+
+    // Find a voice
+    uint8_t voice_id = 0xff;
+    for (uint8_t i = 0; i < POLYPHONY; i++)
+      if (!s->active[i]) {
+        voice_id = i;
+        break;
+      }
+    if (voice_id == 0xff) {
+      // Steal a random voice
+      for (uint8_t i = 0; i < POLYPHONY - 1; i++) {
+        s->s[i] = s->s[i + 1];
+        // `active[i]` is true
+      }
+      voice_id = POLYPHONY - 1;
+    }
+
+    s->s[voice_id] = (struct sampler){
+      .start = start,
+      .len = len,
+      .ptr = 0,
+    };
+    s->active[voice_id] = true;
+  }
+
+  s->trigger_queue_len = 0;
+
+  critical_section_exit(&s->crit);
+
+  // Synthesise and mix
+
   assert(audio_buf_half_frame % 20 == 0);
 
   static int32_t mix[audio_buf_half_frame];
   memset(mix, 0, sizeof mix);
 
-  // critical_section_enter_blocking(&s->crit);
   for (uint8_t i = 0; i < POLYPHONY; i++)
     if (s->active[i]) {
       for (int j = 0; j < audio_buf_half_frame; j += 20) {
@@ -334,7 +360,6 @@ static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_
         }
       }
     }
-  // critical_section_exit(&s->crit);
 
   for (int j = 0; j < audio_buf_half_frame; j++) {
     // 1.5V ~ 2.2V ~ 2.9V (0x4000 ~ 0x6000 ~ 0x7fff)
@@ -495,6 +520,8 @@ static inline void pump(int org_index, int dir)
 
 // ============ Entry point ============
 
+struct polyphonic_sampler ps1;
+
 void core1_entry();
 
 int main()
@@ -568,11 +595,43 @@ if (0) {
   uint32_t state_time;  // Duration into the current state, invalid for `IDLE`
 
   // Updates `pump_dir_signals` from `org_key` and breath signals (TODO)
-  void update_signals() {
+  void update_signals(uint32_t t) {
     // Q - inflate
     // W - drain
     // E - leak
     // pump_dir_signals[0] = (org_key[0] ? +2 : org_key[1] ? -2 : org_key[2] ? -1 : +1);
+
+    if (state == SINGLE_RUN) {
+      int last_phase = (state_time == 0 ? -1 : state_time / 2000);
+      state_time += t;
+      int cur_phase = state_time / 2000;
+      if (state_time >= 16000) {
+        state = IDLE;
+        for (int i = 0; i < 4; i++)
+          pump_dir_signals[i] = +1;
+      } else if (cur_phase != last_phase) {
+        if (cur_phase < 4) {
+          pump_dir_signals[org_id] = (cur_phase % 2 == 0 ? +2 : -2);
+          // irq_set_enabled(DMA_IRQ_0, false);
+          polyphonic_trigger(&ps1,
+            organism_sounds[org_id][cur_phase % 2][0],
+            organism_sounds[org_id][cur_phase % 2][1]);
+          // irq_set_enabled(DMA_IRQ_0, true);
+        } else {
+          for (int i = 0; i < 4; i++)
+            pump_dir_signals[i] = (cur_phase % 2 == 0 ? +2 : -2);
+
+          // irq_set_enabled(DMA_IRQ_0, false);
+          for (int org_id = 0; org_id < 4; org_id++)
+            polyphonic_trigger(&ps1,
+              organism_sounds[org_id][cur_phase % 2][0],
+              organism_sounds[org_id][cur_phase % 2][1]);
+          // irq_set_enabled(DMA_IRQ_0, true);
+        }
+      }
+    } else if (state == FOLLOWER_RUN) {
+      // TODO: Check breath signals
+    }
 
     static int pressed_key = -1;
     static int pressed_dur = 0;
@@ -586,7 +645,12 @@ if (0) {
         // Held
         pressed_dur += 1;
         if (pressed_dur == 500) {
-          my_printf("long %d start\n", pressed_key);
+          if (state == IDLE) {
+            my_printf("long %d start\n", pressed_key);
+            state = FOLLOWER_RUN;
+            org_id = pressed_key;
+            state_time = 0;
+          }
         }
       } else if (pressed_key == -1) {
         // Newly pressed
@@ -603,9 +667,17 @@ if (0) {
       if (pressed_key != -1) {
         // Release
         if (pressed_dur < 500) {
-          my_printf("short %d\n", pressed_key);
+          if (state == IDLE) {
+            my_printf("short %d\n", pressed_key);
+            state = SINGLE_RUN;
+            org_id = pressed_key;
+            state_time = 0;
+          }
         } else {
-          my_printf("long %d end\n", pressed_key);
+          if (state == FOLLOWER_RUN && org_id == pressed_key) {
+            my_printf("long %d end\n", pressed_key);
+            state = IDLE;
+          }
         }
       }
       pressed_key = -1;
@@ -628,8 +700,12 @@ if (0) {
     tuh_task();
     // uint32_t t1 = to_ms_since_boot(get_absolute_time());
     // if (t1 - t0 >= 3) my_printf("tuh_task() takes %u ms\n", t1 - t0);
-    update_signals();
     return (struct proceed_t){task_usb, 1000};    // 1 ms
+  }
+
+  struct proceed_t task_update_signals(uint32_t missed) {
+    update_signals(missed + 1);
+    return (struct proceed_t){task_update_signals, 1000}; // 1 ms
   }
 
   struct proceed_t task_pumps(uint32_t missed) {
@@ -733,6 +809,7 @@ if (0) {
   struct task_t task_pool[] = {
     {task_uart_1s, cur_tick},
     {task_usb, cur_tick},
+    {task_update_signals, cur_tick},
     {task_pumps, cur_tick},
     {task_leds, cur_tick},
     {task_watchdog, cur_tick},
@@ -763,8 +840,6 @@ if (0) {
     }
   }
 }
-
-struct polyphonic_sampler ps1;
 
 void core1_entry()
 {
