@@ -543,13 +543,14 @@ if (0) {
   leds_init();
   tuh_init(BOARD_TUH_RHPORT);
 
-  // +1: inflate
-  //  0: hold
-  // -1: drain
+  // See `pump()` signal values
   int pump_dir_signals[4] = { 0 };
 
   void update_signals() {
-    pump_dir_signals[0] = (org_key[0] ? +1 : org_key[1] ? -1 : 0);
+    // Q - inflate
+    // W - drain
+    // E - leak
+    pump_dir_signals[0] = (org_key[0] ? +2 : org_key[1] ? -2 : org_key[2] ? -1 : +1);
   }
 
   // Task pool
@@ -580,29 +581,44 @@ if (0) {
 
     static int32_t air[4] = { 0 };
     static int32_t wait[4] = { 0 }; // How long has been waited for at -1 signal
-    for (int i = 0; i < 4; i++) {
-      if (pump_dir_signals[i] == +1) {
-        if (air[i] < 30000) {
+    static const struct {
+      uint32_t air_limit, inflate_rate, leakage, drain_rate;
+    } rates[4] = {
+      {30000, 10, 3, 10},
+      {20000, 10, 3, 10},
+      {20000, 10, 3, 10},
+      {20000, 10, 3, 10},
+    };
+    for (int i = 0; i < 4; i++) switch (pump_dir_signals[i]) {
+      case +2: {
+        if (air[i] + rates[i].inflate_rate < rates[i].air_limit) {
           pump(i, +2);
-          air[i] += 10;
+          air[i] += rates[i].inflate_rate;
         } else {
           pump(i, +1);
         }
         wait[i] = 0;
-      } else if (pump_dir_signals[i] == -1) {
+      } break;
+      case -2: {
         if (wait[i] >= 100) {
           pump(i, -2);
-          air[i] = max(0, air[i] - 10);
+          air[i] = max(0, air[i] - rates[i].drain_rate);
         } else {
           pump(i, -1);
+          air[i] = max(0, air[i] - rates[i].leakage);
           wait[i] += 1;
-          air[i] = max(0, air[i] - 4);
         }
-      } else {
+      } break;
+      case +1: {
         // Hold
-        pump(i, 0);
+        pump(i, +1);
         wait[i] = 0;
-      }
+      } break;
+      case -1: default: {
+        pump(i, -1);
+        air[i] = max(0, air[i] - rates[i].leakage);
+        wait[i] = 0;
+      } break;
     }
 
     return (struct proceed_t){task_pumps, 1000};  // 1 ms
