@@ -631,7 +631,7 @@ if (0) {
       int last_phase = (state_time == 0 ? -1 : state_time / 2000);
       state_time += t;
       int cur_phase = state_time / 2000;
-      if (state_time >= 18000) {
+      if (state_time >= 20000) {
         state = IDLE;
         for (int i = 0; i < 4; i++)
           pump_dir_signals[i] = +1;
@@ -804,19 +804,37 @@ if (0) {
   struct proceed_t task_leds(uint32_t _missed) {
     uint8_t a[96][4][3] = {{{ 0 }}};
     static uint32_t n = 0;
-    for (int strip = 1; strip < 4; strip++) {
+    for (int strip = 1; strip < 1; strip++) {
       for (int i = 0; i < 96; i++) {
         int32_t x = 4 - (int32_t)(i + strip + n / 8) % 8;
         a[i][strip][strip % 3] = x < 0 ? -x : x;
       }
     }
     if (state == SINGLE_RUN) {
-      if (state_time < 16000)
-        gradient_Lorivox(4096 * air[0] / rates[0].air_limit, a);
-      else
-        gradient_Lorivox(4096 * (state_time - 16000) / 2000, a);
+      if (state_time < 16000) {
+        // Default to fade-out
+        int intensity = (state_time >= 500 ? 0 :
+          4096 * (500 - state_time) / 500 * (500 - state_time) / 500);
+        gradient_Lorivox(intensity, a);
+        gradient_Harmonia(intensity, a);
+        gradient_Titanus(intensity, a);
+        // Replace the active organism(s) with their active animations
+        if (org_id == 0 || state_time >= 8000)
+          gradient_Lorivox(4096 * air[0] / rates[0].air_limit, a);
+        if (org_id == 2 || state_time >= 8000)
+          gradient_Harmonia(4096 * air[2] / rates[2].air_limit, a);
+        if (org_id == 3 || state_time >= 8000)
+          gradient_Titanus(4096 * air[3] / rates[3].air_limit, a);
+      } else {
+        int intensity = 4096 * (state_time - 16000) / 4000;
+        gradient_Lorivox(intensity, a);
+        gradient_Harmonia(intensity, a);
+        gradient_Titanus(intensity, a);
+      }
     } else {
       gradient_Lorivox(4096, a);
+      gradient_Harmonia(4096, a);
+      gradient_Titanus(4096, a);
     }
     n++;
     // 96 * 24 / 800 kHz = 2.88 ms

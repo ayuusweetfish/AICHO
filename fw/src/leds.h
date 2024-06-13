@@ -13,6 +13,11 @@ static inline uint8_t scale8(uint8_t n, uint8_t t)
   return ((uint16_t)n * (uint16_t)t) >> 8;
 }
 
+static inline uint8_t blend8(uint8_t a, uint8_t b, uint8_t t)
+{
+  return a + ((((uint16_t)b - a) * t) >> 8);
+}
+
 static inline CHSV CHSV_blend(CHSV a, CHSV b, uint8_t t)
 {
   // Ref. FastLED, src/colorutils.cpp
@@ -54,13 +59,18 @@ static inline CRGB CHSV_to_CRGB(CHSV tint)
   }
 }
 
-#define LED_N_Lorivox 23
+static inline CRGB CRGB_blend(CRGB a, CRGB b, uint8_t t)
+{
+  return (CRGB){
+    blend8(a.r, b.r, t),
+    blend8(a.g, b.g, t),
+    blend8(a.b, b.b, t),
+  };
+}
 
+#define LED_N_Lorivox 23
 void gradient_Lorivox(int intensity, uint8_t out[][4][3])
 {
-  // CRGB a = CHSV_to_CRGB((CHSV){40, 180, 80});
-  // my_printf("%u %u %u\n", a.r, a.g, a.b);
-
   for (int i = 0; i < LED_N_Lorivox; i++) {
     float progress = (float)i / (LED_N_Lorivox - 1);
     progress = 1 - (1 - progress) * (1 - progress);
@@ -68,10 +78,45 @@ void gradient_Lorivox(int intensity, uint8_t out[][4][3])
     CHSV green = (CHSV){72, 255, 255};
     CHSV blended = CHSV_blend(green, yellow, progress * 255);
     if (i < 10) blended.v = (int32_t)blended.v * (i * 24) / 255;
-    blended.v = (int32_t)blended.v * intensity / 4096 / 4;
+    blended.v = (int32_t)blended.v * intensity / 4096 / 2;
     CRGB c = CHSV_to_CRGB(blended);
     out[i][0][0] = (c.r >= 8 || c.r < c.g ? c.r : c.g);
     out[i][0][1] = c.g;
     out[i][0][2] = c.b;
+  }
+}
+
+#define LED_N_Harmonia 30
+void gradient_Harmonia(int intensity, uint8_t out[][4][3]) {
+  for (int i = 0; i < LED_N_Harmonia; i++) {
+    CHSV blue = (CHSV){44, 255, 255};
+    CHSV white = (CHSV){0, 0, 255};
+    CHSV blended = CHSV_blend(blue, white, i * 255 / (LED_N_Harmonia - 1));
+    blended.v = (int32_t)blended.v * intensity / 4096 / 4;
+    CRGB c = CHSV_to_CRGB(blended);
+    if (c.r < 8 && c.r > c.g && c.r > c.b) {
+      c.r = (c.g > c.b ? c.g : c.b);
+    }
+    out[i][2][0] = c.r;
+    out[i][2][1] = c.g;
+    out[i][2][2] = c.b;
+  }
+}
+
+#define LED_N_Titanus 31
+void gradient_Titanus(int intensity, uint8_t out[][4][3]) {
+  for (int i = 0; i < LED_N_Titanus; i++) {
+    int saturation = 255 - (255 - intensity / 16) / 2;
+    CHSV yellow = (CHSV){50, saturation, 255};
+    CHSV blue = (CHSV){180, saturation * 3 / 4, 255};
+    CRGB blended = CRGB_blend(
+      CHSV_to_CRGB(yellow), CHSV_to_CRGB(blue),
+      i * 255 / (LED_N_Titanus - 1));
+    blended.r = (uint32_t)blended.r * intensity * intensity / 16777216 / 4;
+    blended.g = (uint32_t)blended.g * intensity * intensity / 16777216 / 4;
+    blended.b = (uint32_t)blended.b * intensity * intensity / 16777216 / 4;
+    out[i][3][0] = blended.r;
+    out[i][3][1] = blended.g;
+    out[i][3][2] = blended.b;
   }
 }
