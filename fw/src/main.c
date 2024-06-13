@@ -5,6 +5,7 @@
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
 #include "hardware/flash.h"
+#include "hardware/watchdog.h"
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -19,10 +20,17 @@
 #define uQOA_IMPL
 #include "uqoa.h"
 
+#define TESTRUN 1
+
 #define max(_a, _b) ((_a) > (_b) ? (_a) : (_b))
 #define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
 
-#define TESTRUN 1
+static inline uint32_t sat_add_u32(uint32_t a, uint32_t b) {
+  return (a + b < a) ? UINT32_MAX : a + b;
+}
+static inline uint32_t sat_sub_u32(uint32_t a, uint32_t b) {
+  return (a < b ? 0 : a - b);
+}
 
 // ============ Debug output ============
 
@@ -476,6 +484,7 @@ static inline void pump_init()
 // +1: hold, solenoid off (standby)
 // -1: hold, solenoid on (minor air leakage)
 // -2: drain
+static int8_t pump_last_op[4] = { 0 };
 static inline void pump(int org_index, int dir)
 {
   // Solenoid on -> air can get out
@@ -503,6 +512,8 @@ int main()
   uart_init(uart0, 115200);
   gpio_set_function(16, GPIO_FUNC_UART);
   gpio_set_function(17, GPIO_FUNC_UART);
+
+  if (watchdog_caused_reboot()) my_printf("Rebooted by watchdog\n");
 
   my_printf("sys clk %u\n", clock_get_hz(clk_sys));
 
@@ -557,7 +568,7 @@ if (0) {
 
   // Task pool
   struct proceed_t {
-    struct proceed_t (*fn)(void);
+    struct proceed_t (*fn)(uint32_t);
     uint32_t wait;
   };
 
@@ -566,13 +577,16 @@ if (0) {
     return (struct proceed_t){task_uart_1s, 1000000};
   }
 
-  struct proceed_t task_usb() {
+  struct proceed_t task_usb(uint32_t _missed) {
+    // uint32_t t0 = to_ms_since_boot(get_absolute_time());
     tuh_task();
+    // uint32_t t1 = to_ms_since_boot(get_absolute_time());
+    // if (t1 - t0 >= 3) my_printf("tuh_task() takes %u ms\n", t1 - t0);
     update_signals();
     return (struct proceed_t){task_usb, 1000};    // 1 ms
   }
 
-  struct proceed_t task_pumps() {
+  struct proceed_t task_pumps(uint32_t missed) {
     static bool startup = true;
     if (startup) {
       // Drain remaining air
@@ -591,6 +605,22 @@ if (0) {
       {20000, 10, 3, 10},
       {20000, 10, 3, 10},
     };
+    if (missed > 0) {
+      // my_printf("missed %u\n", missed);
+      for (int i = 0; i < 4; i++) switch (pump_last_op[i]) {
+        case +2: {
+          air[i] += rates[i].inflate_rate * missed;
+        } break;
+        case -2: {
+          air[i] = sat_sub_u32(air[i], rates[i].drain_rate * missed);
+        } break;
+        case +1: default: {
+        } break;
+        case -1: {
+          air[i] = sat_sub_u32(air[i], rates[i].leakage * missed);
+        } break;
+      }
+    }
     for (int i = 0; i < 4; i++) switch (pump_dir_signals[i]) {
       case +2: {
         if (air[i] + rates[i].inflate_rate < rates[i].air_limit) {
@@ -604,10 +634,10 @@ if (0) {
       case -2: {
         if (wait[i] >= 100) {
           pump(i, -2);
-          air[i] = max(0, air[i] - rates[i].drain_rate);
+          air[i] = sat_sub_u32(air[i], rates[i].drain_rate);
         } else {
           pump(i, -1);
-          air[i] = max(0, air[i] - rates[i].leakage);
+          air[i] = sat_sub_u32(air[i], rates[i].leakage);
           wait[i] += 1;
         }
       } break;
@@ -618,7 +648,7 @@ if (0) {
       } break;
       case -1: default: {
         pump(i, -1);
-        air[i] = max(0, air[i] - rates[i].leakage);
+        air[i] = sat_sub_u32(air[i], rates[i].leakage);
         wait[i] = 0;
       } break;
     }
@@ -626,7 +656,7 @@ if (0) {
     return (struct proceed_t){task_pumps, 1000};  // 1 ms
   };
 
-  struct proceed_t task_leds() {
+  struct proceed_t task_leds(uint32_t _missed) {
     uint8_t a[96][4][3] = {{{ 0 }}};
     static uint32_t n = 0;
     for (int strip = 0; strip < 4; strip++) {
@@ -641,8 +671,16 @@ if (0) {
     return (struct proceed_t){task_leds, 10000};  // 10 ms = 100 fps
   };
 
+  struct proceed_t task_watchdog(uint32_t _missed) {
+    watchdog_update();
+    return (struct proceed_t){task_watchdog, 100000}; // 100 ms
+  }
+
+  // Due to the long time that a single `tuh_task()` may take (max. 500 ms)
+  watchdog_enable(1000, true);
+
   struct task_t {
-    struct proceed_t (*fn)(void);
+    struct proceed_t (*fn)(uint32_t);
     uint64_t next_tick;
   };
   uint64_t cur_tick = time_us_64(); // to_us_since_boot(get_absolute_time());
@@ -651,6 +689,7 @@ if (0) {
     {task_usb, cur_tick},
     {task_pumps, cur_tick},
     {task_leds, cur_tick},
+    {task_watchdog, cur_tick},
   };
   while (1) {
     uint64_t cur_tick = time_us_64();
@@ -665,11 +704,15 @@ if (0) {
     }
     if (soonest_diff <= 0) {
       // Execute task
-      struct proceed_t result = task_pool[soonest_index].fn();
+      // my_printf("[%8u] task %08x\n", to_ms_since_boot(get_absolute_time()), task_pool[soonest_index].fn);
+      uint64_t expected_tick = task_pool[soonest_index].next_tick;
+      uint32_t missed = 0;
+      if (expected_tick < cur_tick) missed = (cur_tick - expected_tick) / 1000;
+      struct proceed_t result = task_pool[soonest_index].fn(missed);
       task_pool[soonest_index].fn = result.fn;
-      task_pool[soonest_index].next_tick += result.wait;
+      task_pool[soonest_index].next_tick = max(expected_tick + result.wait, cur_tick + 1);
     } else {
-      // my_printf("sleep %lld\n", soonest_diff);
+      // if (soonest_diff > 5) my_printf("[%8u] sleep %lld\n", to_ms_since_boot(get_absolute_time()), soonest_diff);
       if (soonest_diff > 5) sleep_us(soonest_diff - 5);
     }
   }
@@ -768,13 +811,6 @@ void consume_buffer(const int32_t *buf)
   static int64_t hi_ema = 0;
   hi_ema += (sum_hi - hi_ema) / 8;
 
-  uint32_t sat_add_u32(uint32_t a, uint32_t b) {
-    return (a + b < a) ? UINT32_MAX : a + b;
-  }
-  uint32_t sat_sub_u32(uint32_t a, uint32_t b) {
-    return (a < b ? 0 : a - b);
-  }
-
   static uint32_t bins[audio_in_buf_half_size / 2];
   // From 7 kHz = 280-th coefficient
   // To 16 kHz = 640-th coefficient
@@ -832,6 +868,8 @@ void consume_buffer(const int32_t *buf)
     }
     my_printf("|\n");
   */
+
+  /*
     my_printf("[%8u] | ", to_ms_since_boot(get_absolute_time()));
     my_printf("%8x | %6u %6u |",
       accum,
@@ -842,6 +880,7 @@ void consume_buffer(const int32_t *buf)
     for (int i = 0; i < 90; i += 5)
       my_printf(" %5u", min(99999, bins[i]));
     my_printf("\n");
+  */
     count = 0;
   }
 }
