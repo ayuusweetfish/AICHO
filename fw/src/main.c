@@ -583,8 +583,10 @@ if (0) {
   while (1) { }
 }
 
-  // Lorivox seems to have a pop in the exhale sound
-  // turns out to be due to power supply limitations -- not present with valves/pumps removed
+  // NOTE: seems to have a pop/glitch in the exhale sound of any organism
+  // which is present iff the draining pump is connected and
+  // the power supply is debug probe's VBUS
+  // -- EMI? Power supply? Unsure for now.
 
   fft_init();
   pump_init();
@@ -634,6 +636,9 @@ if (0) {
           polyphonic_trigger(&ps1,
             ensemble_sounds[cur_phase % 2][0],
             ensemble_sounds[cur_phase % 2][1]);
+        } else {
+          for (int i = 0; i < 4; i++)
+            pump_dir_signals[i] = -1;
         }
       }
     } else if (state == FOLLOWER_RUN) {
