@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     uint32_t len = page_start + page_buf_ptr - addr_start;
 
 #define print_name() do { \
-    int spaces = 16; \
+    int spaces = 18; \
     if (!isalpha(name[0])) { \
       putchar('_'); \
       spaces--; \
