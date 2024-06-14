@@ -271,6 +271,7 @@ static inline void sampler_mix(struct sampler *s, int32_t out[20])
 }
 
 #define POLYPHONY 8
+#define STEREO 0
 struct polyphonic_sampler {
   critical_section_t crit;
   struct sampler s[POLYPHONY];
@@ -311,51 +312,70 @@ static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_
 {
   // Process triggers
 
-  critical_section_enter_blocking(&s->crit);
+  if (__builtin_expect(s->trigger_queue_len != 0, 0)) {
+    critical_section_enter_blocking(&s->crit);
 
-  for (int i = 0; i < s->trigger_queue_len; i++) {
-    uint32_t start = s->trigger_queue[i].start;
-    uint32_t len = s->trigger_queue[i].len;
+  #if STEREO
+    assert(s->trigger_queue_len % 2 == 0);
+  #endif
 
-    // Find a voice
-    uint8_t voice_id = 0xff;
-    for (uint8_t i = 0; i < POLYPHONY; i++)
-      if (!s->active[i]) {
-        voice_id = i;
-        break;
+    for (int i = 0; i < s->trigger_queue_len; i++) {
+      uint32_t start = s->trigger_queue[i].start;
+      uint32_t len = s->trigger_queue[i].len;
+
+      // Find a voice
+      uint8_t voice_id = 0xff;
+      for (uint8_t i = 0; i < POLYPHONY; i++)
+        if (!s->active[i]) {
+          voice_id = i;
+          break;
+        }
+      if (voice_id == 0xff) {
+        // Steal a random voice
+        for (uint8_t i = 0; i < POLYPHONY - 1; i++) {
+          s->s[i] = s->s[i + 1];
+          // `active[i]` is true
+        }
+        voice_id = POLYPHONY - 1;
       }
-    if (voice_id == 0xff) {
-      // Steal a random voice
-      for (uint8_t i = 0; i < POLYPHONY - 1; i++) {
-        s->s[i] = s->s[i + 1];
-        // `active[i]` is true
-      }
-      voice_id = POLYPHONY - 1;
+
+      s->s[voice_id] = (struct sampler){
+        .start = start,
+        .len = len,
+        .ptr = 0,
+      };
+      s->active[voice_id] = true;
+
+    #if STEREO
+      assert((i & 1) == (voice_id & 1));
+      if (i & 1) assert(s->trigger_queue[i].len == s->trigger_queue[i - 1].len);
+    #endif
     }
 
-    s->s[voice_id] = (struct sampler){
-      .start = start,
-      .len = len,
-      .ptr = 0,
-    };
-    s->active[voice_id] = true;
+    s->trigger_queue_len = 0;
+
+    critical_section_exit(&s->crit);
   }
-
-  s->trigger_queue_len = 0;
-
-  critical_section_exit(&s->crit);
 
   // Synthesise and mix
 
   assert(audio_buf_half_frame % 20 == 0);
 
+#if STEREO
+  static int32_t mix[2][audio_buf_half_frame];
+#else
   static int32_t mix[audio_buf_half_frame];
+#endif
   memset(mix, 0, sizeof mix);
 
   for (uint8_t i = 0; i < POLYPHONY; i++)
     if (s->active[i]) {
       for (int j = 0; j < audio_buf_half_frame; j += 20) {
+      #if STEREO
+        sampler_mix(&s->s[i], mix[i & 1] + j);
+      #else
         sampler_mix(&s->s[i], mix + j);
+      #endif
         if (s->s[i].ptr == 0) {
           s->active[i] = false;
           break;
@@ -369,8 +389,15 @@ static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_
     // Note: the scaler should be at least equal to
     //  `POLYPHONY` * 4 (dynamic range, from 0x4000 to 0x7fff) = 32
     // i.e., 0x60000000 + ((0x7fff * POLYPHONY) << 9) <= 0x7fffffff
+  #if STEREO
+    int32_t sample_l = 0x60000000 + (mix[0][j] << 9);
+    int32_t sample_r = 0x60000000 + (mix[1][j] << 9);
+    out[j * 2 + 0] = sample_l;
+    out[j * 2 + 1] = sample_r;
+  #else
     int32_t sample = 0x60000000 + (mix[j] << 9);
     out[j * 2] = out[j * 2 + 1] = sample;
+  #endif
   }
 }
 
@@ -508,20 +535,40 @@ void leds_blast(uint8_t a[][4][3], int n)
 #define FILE_SIZE_Ensemble_Ex_L_bin  154816
 #define FILE_ADDR_Ensemble_Ex_R_bin  4489664
 #define FILE_SIZE_Ensemble_Ex_R_bin  154816
-// [index][inhale/exhale][addr/size]
-static const uint32_t organism_sounds[4][2][2] = {
-  {{FILE_ADDR_Lorivox_In_bin, FILE_SIZE_Lorivox_In_bin},
-   {FILE_ADDR_Lorivox_Ex_bin, FILE_SIZE_Lorivox_Ex_bin}},
-  {{FILE_ADDR_Lumisonic_In_bin, FILE_SIZE_Lumisonic_In_bin},
-   {FILE_ADDR_Lumisonic_Ex_bin, FILE_SIZE_Lumisonic_Ex_bin}},
-  {{FILE_ADDR_Harmonia_In_bin, FILE_SIZE_Harmonia_In_bin},
-   {FILE_ADDR_Harmonia_Ex_bin, FILE_SIZE_Harmonia_Ex_bin}},
-  {{FILE_ADDR_Titanus_In_bin, FILE_SIZE_Titanus_In_bin},
-   {FILE_ADDR_Titanus_Ex_bin, FILE_SIZE_Titanus_Ex_bin}},
+// [index][inhale/exhale][channel mono/L/R][addr/size]
+static const uint32_t organism_sounds[4][2][3][2] = {
+  {{{FILE_ADDR_Lorivox_In_bin, FILE_SIZE_Lorivox_In_bin},
+    {FILE_ADDR_Lorivox_In_L_bin, FILE_SIZE_Lorivox_In_L_bin},
+    {FILE_ADDR_Lorivox_In_R_bin, FILE_SIZE_Lorivox_In_R_bin}},
+   {{FILE_ADDR_Lorivox_Ex_bin, FILE_SIZE_Lorivox_Ex_bin},
+    {FILE_ADDR_Lorivox_Ex_L_bin, FILE_SIZE_Lorivox_Ex_L_bin},
+    {FILE_ADDR_Lorivox_Ex_R_bin, FILE_SIZE_Lorivox_Ex_R_bin}}},
+  {{{FILE_ADDR_Lumisonic_In_bin, FILE_SIZE_Lumisonic_In_bin},
+    {FILE_ADDR_Lumisonic_In_L_bin, FILE_SIZE_Lumisonic_In_L_bin},
+    {FILE_ADDR_Lumisonic_In_R_bin, FILE_SIZE_Lumisonic_In_R_bin}},
+   {{FILE_ADDR_Lumisonic_Ex_bin, FILE_SIZE_Lumisonic_Ex_bin},
+    {FILE_ADDR_Lumisonic_Ex_L_bin, FILE_SIZE_Lumisonic_Ex_L_bin},
+    {FILE_ADDR_Lumisonic_Ex_R_bin, FILE_SIZE_Lumisonic_Ex_R_bin}}},
+  {{{FILE_ADDR_Harmonia_In_bin, FILE_SIZE_Harmonia_In_bin},
+    {FILE_ADDR_Harmonia_In_L_bin, FILE_SIZE_Harmonia_In_L_bin},
+    {FILE_ADDR_Harmonia_In_R_bin, FILE_SIZE_Harmonia_In_R_bin}},
+   {{FILE_ADDR_Harmonia_Ex_bin, FILE_SIZE_Harmonia_Ex_bin},
+    {FILE_ADDR_Harmonia_Ex_L_bin, FILE_SIZE_Harmonia_Ex_L_bin},
+    {FILE_ADDR_Harmonia_Ex_R_bin, FILE_SIZE_Harmonia_Ex_R_bin}}},
+  {{{FILE_ADDR_Titanus_In_bin, FILE_SIZE_Titanus_In_bin},
+    {FILE_ADDR_Titanus_In_L_bin, FILE_SIZE_Titanus_In_L_bin},
+    {FILE_ADDR_Titanus_In_R_bin, FILE_SIZE_Titanus_In_R_bin}},
+   {{FILE_ADDR_Titanus_Ex_bin, FILE_SIZE_Titanus_Ex_bin},
+    {FILE_ADDR_Titanus_Ex_L_bin, FILE_SIZE_Titanus_Ex_L_bin},
+    {FILE_ADDR_Titanus_Ex_R_bin, FILE_SIZE_Titanus_Ex_R_bin}}},
 };
-static const uint32_t ensemble_sounds[2][2] = {
-  {FILE_ADDR_Ensemble_In_bin, FILE_SIZE_Ensemble_In_bin},
-  {FILE_ADDR_Ensemble_Ex_bin, FILE_SIZE_Ensemble_Ex_bin},
+static const uint32_t ensemble_sounds[2][3][2] = {
+  {{FILE_ADDR_Ensemble_In_bin, FILE_SIZE_Ensemble_In_bin},
+   {FILE_ADDR_Ensemble_In_L_bin, FILE_SIZE_Ensemble_In_L_bin},
+   {FILE_ADDR_Ensemble_In_R_bin, FILE_SIZE_Ensemble_In_R_bin}},
+  {{FILE_ADDR_Ensemble_Ex_bin, FILE_SIZE_Ensemble_Ex_bin},
+   {FILE_ADDR_Ensemble_Ex_L_bin, FILE_SIZE_Ensemble_Ex_L_bin},
+   {FILE_ADDR_Ensemble_Ex_R_bin, FILE_SIZE_Ensemble_Ex_R_bin}},
 };
 
 // ============ Solenoid valves / pumps output ============
@@ -572,6 +619,37 @@ static inline void pump(int org_index, int dir)
 
 struct polyphonic_sampler ps1;
 
+static inline void ps1_organism(int org_index, int dir)
+{
+#if STEREO
+  polyphonic_trigger(&ps1,
+    organism_sounds[org_index][dir][1][0],
+    organism_sounds[org_index][dir][1][1]);
+  polyphonic_trigger(&ps1,
+    organism_sounds[org_index][dir][2][0],
+    organism_sounds[org_index][dir][2][1]);
+#else
+  polyphonic_trigger(&ps1,
+    organism_sounds[org_index][dir][0][0],
+    organism_sounds[org_index][dir][0][1]);
+#endif
+}
+static inline void ps1_ensemble(int dir)
+{
+#if STEREO
+  polyphonic_trigger(&ps1,
+    ensemble_sounds[dir][1][0],
+    ensemble_sounds[dir][1][1]);
+  polyphonic_trigger(&ps1,
+    ensemble_sounds[dir][2][0],
+    ensemble_sounds[dir][2][1]);
+#else
+  polyphonic_trigger(&ps1,
+    ensemble_sounds[dir][0][0],
+    ensemble_sounds[dir][0][1]);
+#endif
+}
+
 void core1_entry();
 
 int main()
@@ -606,9 +684,7 @@ if (0) {
   polyphonic_init(&ps1);
   for (int dir = 0; dir < 2; dir++)
     for (int org = 0; org < 4; org++)
-      polyphonic_trigger(&ps1,
-        organism_sounds[org][dir][0],
-        organism_sounds[org][dir][1]);
+      ps1_organism(org, dir);
   uint32_t buf[audio_buf_half_size];
   uint32_t t0 = to_ms_since_boot(get_absolute_time());
   for (int i = 0; i < 1000; i++) {
@@ -666,16 +742,11 @@ if (0) {
       } else if (cur_phase != last_phase) {
         if (cur_phase < 4) {
           pump_dir_signals[org_id] = (cur_phase % 2 == 0 ? +2 : -2);
-          polyphonic_trigger(&ps1,
-            organism_sounds[org_id][cur_phase % 2][0],
-            organism_sounds[org_id][cur_phase % 2][1]);
+          ps1_organism(org_id, cur_phase % 2);
         } else if (cur_phase < 8) {
           for (int i = 0; i < 4; i++)
             pump_dir_signals[i] = (cur_phase % 2 == 0 ? +2 : -2);
-
-          polyphonic_trigger(&ps1,
-            ensemble_sounds[cur_phase % 2][0],
-            ensemble_sounds[cur_phase % 2][1]);
+          ps1_ensemble(cur_phase % 2);
         } else {
           for (int i = 0; i < 4; i++)
             pump_dir_signals[i] = -1;
@@ -952,14 +1023,10 @@ void core1_entry()
       if (org < 2) {
         int group = org;
         for (int org = group; org < 4; org++)
-          polyphonic_trigger(&ps1,
-            organism_sounds[org][dir][0],
-            organism_sounds[org][dir][1]);
+          ps1_organism(org, dir);
       } else {
         org -= 2;
-        polyphonic_trigger(&ps1,
-          organism_sounds[org][dir][0],
-          organism_sounds[org][dir][1]);
+        ps1_organism(org, dir);
       }
     }
   }
