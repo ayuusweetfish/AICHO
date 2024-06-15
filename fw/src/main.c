@@ -699,6 +699,8 @@ if (0) {
   while (1) { }
 }
 
+  sleep_ms(500);
+
   // NOTE: seems to have a pop/glitch in the exhale sound of any organism
   // which is present iff the draining pump is connected and
   // the power supply is debug probe's VBUS

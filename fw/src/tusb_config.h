@@ -96,7 +96,7 @@
 
 #define CFG_TUH_HUB                 36 // number of supported hubs
 #define CFG_TUH_CDC                 8
-#define CFG_TUH_HID                 36 // typical keyboard + mouse device can have 3-4 HID interfaces
+#define CFG_TUH_HID                 10 // typical keyboard + mouse device can have 3-4 HID interfaces
 #define CFG_TUH_MSC                 8
 #define CFG_TUH_VENDOR              0
 
@@ -104,8 +104,8 @@
 #define CFG_TUH_DEVICE_MAX          (CFG_TUH_HUB ? 4 : 1) // hub typically has 4 ports
 
 //------------- HID -------------//
-#define CFG_TUH_HID_EPIN_BUFSIZE    256
-#define CFG_TUH_HID_EPOUT_BUFSIZE   256
+#define CFG_TUH_HID_EPIN_BUFSIZE    1024
+#define CFG_TUH_HID_EPOUT_BUFSIZE   1024
 
 //------------- CDC -------------//
 
