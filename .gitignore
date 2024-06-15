@@ -1,6 +1,8 @@
 /fw/auxdat/auxdat.gdbinit
 /fw/build/
 /fw/pico-sdk
+/fw_key_relay/build/
+/fw_key_relay/pico-sdk
 /hw/fp-info-cache
 /misc/audio_analysis/a.out
 /misc/audio_analysis/kissfft-131.1.0/

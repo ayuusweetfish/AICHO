@@ -819,20 +819,30 @@ if (0) {
   }
 
   struct proceed_t task_uart_rx() {
+    // Format: ~AICHO+Q (press Q) ~AICHO+q (release Q)
+    static int pwd_count = 0;
+    static const char pwd[] = "~AICHO+";
+    static const int pwd_len = (sizeof pwd) - 1;
     while (uart_is_readable(uart0)) {
       char c = uart_getc(uart0);
-      // my_printf("UART received [%c]\n", c);
-      switch (c) {
-        case 'Q': org_key[0] = true; break;
-        case 'q': org_key[0] = false; break;
-        case 'W': org_key[1] = true; break;
-        case 'w': org_key[1] = false; break;
-        case 'E': org_key[2] = true; break;
-        case 'e': org_key[2] = false; break;
-        case 'R': org_key[3] = true; break;
-        case 'r': org_key[3] = false; break;
+      if (pwd_count == pwd_len) {
+        // my_printf("UART received [%c]\n", c);
+        switch (c) {
+          case 'Q': org_key[0] = true; break;
+          case 'q': org_key[0] = false; break;
+          case 'W': org_key[1] = true; break;
+          case 'w': org_key[1] = false; break;
+          case 'E': org_key[2] = true; break;
+          case 'e': org_key[2] = false; break;
+          case 'R': org_key[3] = true; break;
+          case 'r': org_key[3] = false; break;
+        }
+        pwd_count = 0;
+        gpio_put(act_1, org_key[0] || org_key[1] || org_key[2] || org_key[3]);
+      } else {
+        if (c == pwd[pwd_count]) pwd_count++;
+        else pwd_count = 0;
       }
-      gpio_put(act_1, org_key[0] || org_key[1] || org_key[2] || org_key[3]);
     }
     return (struct proceed_t){task_uart_rx, 1000};  // 1 ms
   }
