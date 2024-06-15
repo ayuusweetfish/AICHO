@@ -1,4 +1,5 @@
 import datetime
+import keyboard
 import serial
 import serial.tools.list_ports
 import time
@@ -7,6 +8,8 @@ def log(*args):
   print(datetime.datetime.now().isoformat(), *args)
 
 sel_serial = None
+
+last_down = [False] * 4
 
 while True:
   try:
@@ -24,12 +27,15 @@ while True:
     log(sel_serial)
 
     while True:
-      data = '~AICHO+Q'
-      sel_serial.write(data.encode())
-      time.sleep(1)
-      data = '~AICHO+q'
-      sel_serial.write(data.encode())
-      time.sleep(1)
+      cur_down = [keyboard.is_pressed(c) for c in ['q', 'w', 'e', 'r']]
+      for last, cur, c in zip(last_down, cur_down, ['q', 'w', 'e', 'r']):
+        if last != cur:
+          data = '~AICHO+' + (c.upper() if cur else c.lower())
+          sel_serial.write(data.encode())
+          # print(data)
+      last_down = cur_down
+      time.sleep(0.01)
+
   except Exception as e:
     log(e)
     if sel_serial is not None:
