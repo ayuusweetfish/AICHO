@@ -854,7 +854,7 @@ if (0) {
     tuh_task();
     // uint32_t t1 = to_ms_since_boot(get_absolute_time());
     // if (t1 - t0 >= 3) my_printf("tuh_task() takes %u ms\n", t1 - t0);
-    return (struct proceed_t){task_usb, 1000};    // 1 ms
+    return (struct proceed_t){task_usb, 100};    // 100 us
   }
 
   struct proceed_t task_update_signals(uint32_t missed) {
@@ -989,7 +989,7 @@ if (0) {
   }
 
   // Due to the long time that a single `tuh_task()` may take (max. 500 ms)
-  watchdog_enable(1000, true);
+  watchdog_enable(2000, true);
 
   struct task_t {
     struct proceed_t (*fn)(uint32_t);
@@ -1168,6 +1168,7 @@ void consume_buffer(const int32_t *buf)
     my_printf("|\n");
   */
 
+  /*
     my_printf("[%8u] | ", to_ms_since_boot(get_absolute_time()));
     my_printf("%8x | %10u %6u %6u |",
       accum,
@@ -1180,5 +1181,6 @@ void consume_buffer(const int32_t *buf)
       my_printf(" %5u", min(99999, bins[i]));
     my_printf("\n");
     count = 0;
+  */
   }
 }

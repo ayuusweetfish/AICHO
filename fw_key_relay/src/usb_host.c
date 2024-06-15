@@ -146,8 +146,8 @@ static void process_kbd_report(hid_keyboard_report_t const *report)
 
   for (int i = 0; i < 4; i++)
     if (last_org_key[i] != org_key[i]) {
-      for (const char *c = "~AICHO+"; c != 0; c++)
-        uart_putc_raw(*c);
+      for (const char *c = "~AICHO+"; *c != 0; c++)
+        uart_putc_raw(uart0, *c);
       uart_putc_raw(uart0, "QWERqwer"[(org_key[i] ? 0 : 4) + i]);
     }
 }
