@@ -729,11 +729,13 @@ if (0) {
     IDLE,
     SINGLE_RUN,
     FOLLOWER_RUN,
+    FOLLOWER_RUN_TAIL,
   } state = IDLE;
   int8_t org_id;        // For `SINGLE_RUN` and `FOLLOWER_RUN`
   uint32_t state_time;  // Duration into the current state, invalid for `IDLE`
 
   breath_rate_estimator bre;  // Estimator for `FOLLOWER_RUN`
+  uint32_t phase_dur;   // Breath rate (half of cycle duration) for `FOLLOWER_RUN_TAIL`
 
   // Updates `pump_dir_signals` from `org_key` and breath signals (TODO)
   void update_signals(uint32_t t) {
@@ -766,6 +768,7 @@ if (0) {
         }
       }
     } else if (state == FOLLOWER_RUN) {
+      state_time += t;
       bool new_inhale = false;
       bool new_exhale = false;
       int state = -1;
@@ -780,6 +783,36 @@ if (0) {
         ps1_organism(org_id, 0);
       gpio_put(act_2, state > 0);
       gpio_put(act_1, breath_signal);
+      pump_dir_signals[org_id] = (state > 0 ? +2 : -2);
+    } else if (state == FOLLOWER_RUN_TAIL) {
+      // XXX: DRY
+      int last_phase = (state_time == 0 ? -1 : state_time / phase_dur);
+      state_time += t;
+      int cur_phase = state_time / phase_dur;
+      if (state_time >= phase_dur * 4 + 4000) {
+        state = IDLE;
+        state_time = 0;
+        // Leak
+        for (int i = 0; i < 4; i++)
+          pump_dir_signals[i] = -1;
+      } else if (cur_phase != last_phase) {
+        if (cur_phase < 4) {
+          for (int i = 0; i < 4; i++)
+            pump_dir_signals[i] = (cur_phase % 2 == 0 ? +2 : -2);
+          ps1_ensemble(cur_phase % 2);
+        } else {
+          for (int i = 0; i < 4; i++)
+            pump_dir_signals[i] = -1;
+        }
+      }
+    } else if (state == IDLE) {
+      if (state_time < 10000) {
+        if ((state_time += t) >= 10000) {
+          // Total idle
+          for (int i = 0; i < 4; i++)
+            pump_dir_signals[i] = +1;
+        }
+      }
     }
 
     static int pressed_key = -1;
@@ -831,7 +864,9 @@ if (0) {
         } else {
           if (state == FOLLOWER_RUN && org_id == pressed_key) {
             my_printf("long %d end\n", pressed_key);
-            state = IDLE;
+            state = FOLLOWER_RUN_TAIL;
+            state_time = 0;
+            phase_dur = bre.rate / 2;
           }
         }
       }
@@ -901,10 +936,10 @@ if (0) {
   static const struct {
     uint32_t air_limit, inflate_rate, leakage, drain_rate;
   } rates[4] = {
+    {20000, 10, 3, 10},
+    {20000, 10, 3, 10},
     {30000, 10, 3, 10},
-    {20000, 10, 3, 10},
-    {20000, 10, 3, 10},
-    {20000, 10, 3, 10},
+    {30000, 10, 3, 10},
   };
 
   struct proceed_t task_pumps(uint32_t missed) {
@@ -999,6 +1034,43 @@ if (0) {
       } else {
         int intensity = 4096 * (state_time - 16000) / 4000;
         float x = (float)(state_time - 16000) / 4000;
+        int lum_progress = 3200 * (1 - (1 - x) * (1 - x));
+        gradient_Lorivox(intensity, a);
+        gradient_Lumisonic(intensity, lum_progress, a);
+        gradient_Harmonia(intensity, a);
+        gradient_Titanus(intensity, a);
+      }
+    } else if (state == FOLLOWER_RUN) {
+      // XXX: DRY
+      // Default to fade-out
+      int intensity = (state_time >= 500 ? 0 :
+        4096 * (500 - state_time) / 500 * (500 - state_time) / 500);
+      gradient_Lorivox(intensity, a);
+      gradient_Lumisonic(intensity, 3200, a);
+      gradient_Harmonia(intensity, a);
+      gradient_Titanus(intensity, a);
+      // Replace the active organism(s) with their active animations
+      if (org_id == 0)
+        gradient_Lorivox(4096 * air[0] / rates[0].air_limit, a);
+      if (org_id == 1) {
+        int lum_progress = (state_time % 4000) * 8192 / 4000;
+        gradient_Lumisonic(4096, lum_progress, a);
+      }
+      if (org_id == 2)
+        gradient_Harmonia(4096 * air[2] / rates[2].air_limit, a);
+      if (org_id == 3)
+        gradient_Titanus(4096 * air[3] / rates[3].air_limit, a);
+    } else if (state == FOLLOWER_RUN_TAIL) {
+      // XXX: DRY
+      if (state_time < phase_dur * 4) {
+        gradient_Lorivox(4096 * air[0] / rates[0].air_limit, a);
+        int lum_progress = (state_time % 4000) * 8192 / 4000;
+        gradient_Lumisonic(4096, lum_progress, a);
+        gradient_Harmonia(4096 * air[2] / rates[2].air_limit, a);
+        gradient_Titanus(4096 * air[3] / rates[3].air_limit, a);
+      } else {
+        int intensity = 4096 * (state_time - phase_dur * 4) / 4000;
+        float x = (float)(state_time - phase_dur * 4) / 4000;
         int lum_progress = 3200 * (1 - (1 - x) * (1 - x));
         gradient_Lorivox(intensity, a);
         gradient_Lumisonic(intensity, lum_progress, a);
