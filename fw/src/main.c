@@ -818,6 +818,25 @@ if (0) {
     return (struct proceed_t){task_uart_1s, 1000000};
   }
 
+  struct proceed_t task_uart_rx() {
+    while (uart_is_readable(uart0)) {
+      char c = uart_getc(uart0);
+      // my_printf("UART received [%c]\n", c);
+      switch (c) {
+        case 'Q': org_key[0] = true; break;
+        case 'q': org_key[0] = false; break;
+        case 'W': org_key[1] = true; break;
+        case 'w': org_key[1] = false; break;
+        case 'E': org_key[2] = true; break;
+        case 'e': org_key[2] = false; break;
+        case 'R': org_key[3] = true; break;
+        case 'r': org_key[3] = false; break;
+      }
+      gpio_put(act_1, org_key[0] || org_key[1] || org_key[2] || org_key[3]);
+    }
+    return (struct proceed_t){task_uart_rx, 1000};  // 1 ms
+  }
+
   struct proceed_t task_usb(uint32_t _missed) {
     // uint32_t t0 = to_ms_since_boot(get_absolute_time());
     tuh_task();
@@ -967,6 +986,7 @@ if (0) {
   uint64_t cur_tick = time_us_64(); // to_us_since_boot(get_absolute_time());
   struct task_t task_pool[] = {
     {task_uart_1s, cur_tick},
+    {task_uart_rx, cur_tick},
     {task_usb, cur_tick},
     {task_update_signals, cur_tick},
     {task_pumps, cur_tick},
@@ -1136,8 +1156,9 @@ void consume_buffer(const int32_t *buf)
 
   /*
     my_printf("[%8u] | ", to_ms_since_boot(get_absolute_time()));
-    my_printf("%8x | %6u %6u |",
+    my_printf("%8x | %10u %6u %6u |",
       accum,
+      diff,
       (uint32_t)min(999999, enr_total / 1000),
       (uint32_t)llabs(sum_hi - hi_ema)
     );
@@ -1145,7 +1166,7 @@ void consume_buffer(const int32_t *buf)
     for (int i = 0; i < 90; i += 5)
       my_printf(" %5u", min(99999, bins[i]));
     my_printf("\n");
-  */
     count = 0;
+  */
   }
 }
