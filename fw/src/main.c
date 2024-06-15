@@ -731,6 +731,8 @@ if (0) {
     // E - leak
     // pump_dir_signals[0] = (org_key[0] ? +2 : org_key[1] ? -2 : org_key[2] ? -1 : +1);
 
+    gpio_put(act_2, breath_signal);
+
     if (state == SINGLE_RUN) {
       int last_phase = (state_time == 0 ? -1 : state_time / 2000);
       state_time += t;
@@ -1070,6 +1072,8 @@ void refill_buffer(uint32_t *buf)
   polyphonic_out(&ps1, buf);
 }
 
+bool breath_signal = false;
+
 void consume_buffer(const int32_t *buf)
 {
   int32_t min = INT32_MAX;
@@ -1145,7 +1149,7 @@ void consume_buffer(const int32_t *buf)
       if (held < 40) held++;
     }
   }
-  gpio_put(act_2, signal);
+  breath_signal = signal;
   accum >>= 1;
 
   if (++count >= 0.2 * 51563 / audio_in_buf_half_size) {
@@ -1164,7 +1168,6 @@ void consume_buffer(const int32_t *buf)
     my_printf("|\n");
   */
 
-  /*
     my_printf("[%8u] | ", to_ms_since_boot(get_absolute_time()));
     my_printf("%8x | %10u %6u %6u |",
       accum,
@@ -1177,6 +1180,5 @@ void consume_buffer(const int32_t *buf)
       my_printf(" %5u", min(99999, bins[i]));
     my_printf("\n");
     count = 0;
-  */
   }
 }

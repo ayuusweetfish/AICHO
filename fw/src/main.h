@@ -17,7 +17,9 @@
   #define act_2 26
 #endif
 
+// main.c
 int my_printf(const char *restrict fmt, ...);
+extern bool breath_signal;
 
 // fft.c
 #define FFT_N 2048
