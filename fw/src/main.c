@@ -989,7 +989,7 @@ if (0) {
   }
 
   // Due to the long time that a single `tuh_task()` may take (max. 500 ms)
-  watchdog_enable(2000, true);
+  watchdog_enable(4000, true);
 
   struct task_t {
     struct proceed_t (*fn)(uint32_t);
