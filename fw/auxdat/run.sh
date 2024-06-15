@@ -1,8 +1,8 @@
 cc uqoa_conv.c -O2 -o uqoa_conv -I../src
 cc gen.c -O2 -o gen
 
-# ffmpeg -i Lorivox_In.wav -i Lumisonic_In.wav -i Harmonia_In.wav -i Titanus_In.wav -filter_complex amix=inputs=2:duration=longest Ensemble_In.wav
-# ffmpeg -i Lorivox_Ex.wav -i Lumisonic_Ex.wav -i Harmonia_Ex.wav -i Titanus_Ex.wav -filter_complex amix=inputs=2:duration=longest Ensemble_Ex.wav
+# ffmpeg -i Lorivox_In.wav -i Lumisonic_In.wav -i Harmonia_In.wav -i Titanus_In.wav -filter_complex amix=inputs=4:duration=longest Ensemble_In.wav
+# ffmpeg -i Lorivox_Ex.wav -i Lumisonic_Ex.wav -i Harmonia_Ex.wav -i Titanus_Ex.wav -filter_complex amix=inputs=4:duration=longest Ensemble_Ex.wav
 
 binfiles_mixdown=()
 binfiles_channels=()
