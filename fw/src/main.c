@@ -1116,6 +1116,7 @@ void consume_buffer(const int32_t *buf)
   static uint32_t accum = 0;
   static bool signal = false;
   static uint32_t held = 0;
+  static uint32_t on_held = 0;
 
   // Cancel out extraneous triggers (maybe inhalation, or noise)
   if (sum_lo * 10000 / enr_total >= 200)
@@ -1129,9 +1130,14 @@ void consume_buffer(const int32_t *buf)
     accum += min(20, bins[40] - 20) << 8;
 
   if (!signal) {
-    if (accum >= 0x4000) signal = true;
+    if (accum >= 0x2000) {
+      on_held += (accum >= 0x4000 ? 2 : 1);
+      if (on_held >= 10) signal = true;
+    } else {
+      on_held = 0;
+    }
   } else {
-    if (accum < 0x4000 - held * 0x180) {
+    if (accum < 0x2000 - held * 0x100) {
       signal = false;
       held = 0;
     } else {
