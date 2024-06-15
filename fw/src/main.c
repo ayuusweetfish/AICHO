@@ -1092,56 +1092,58 @@ void consume_buffer(const int32_t *buf)
       ) >> 32);
 
   uint64_t enr_total = 0;
-  for (uint32_t j = 100; j <= 280; j++) enr_total += ampl[j];
+  for (uint32_t j = 1; j <= 1024; j++) enr_total += ampl[j];
 
-  int64_t sum_hi = 0;
-  for (uint32_t j = 640; j <= 1024; j++) sum_hi += ampl[j];
-  static int64_t hi_ema = 0;
-  hi_ema += (sum_hi - hi_ema) / 8;
+  int64_t sum_lo = 0;
+  for (uint32_t j = 320; j <= 640; j++) sum_lo += ampl[j];
+  static int64_t lo_ema = 0;
+  lo_ema += (sum_lo - lo_ema) / 8;
 
   static uint32_t bins[audio_in_buf_half_size / 2];
-  // From 7 kHz = 280-th coefficient
+  // From 8 kHz = 320-th coefficient
   // To 16 kHz = 640-th coefficient
-  for (uint32_t i = 70; i < 160; i++) {
+  for (uint32_t i = 80; i < 160; i++) {
     uint32_t sum = 0;
     for (int j = i * 4 + 1; j <= i * 4 + 4; j++) sum = sat_add_u32(sum, ampl[j]);
     sum = (uint64_t)sum * 1000 / (enr_total / 100);
-    bins[i - 70] = sum;
+    bins[i - 80] = sum;
   }
   int uint32_compare_desc(const void *a, const void *b) {
     return *(const uint32_t *)b - *(const uint32_t *)a;
   }
-  qsort(bins, 90, sizeof(uint32_t), uint32_compare_desc);
+  qsort(bins, 80, sizeof(uint32_t), uint32_compare_desc);
 
   static uint32_t accum = 0;
   static bool signal = false;
   static uint32_t held = 0;
 
-  if (bins[ 5] >= 400)
-    accum += (min(50, bins[ 5] - 400) << 14);
-  if (bins[40] >= 100)
-    accum += (min(50, bins[40] - 100) << 14);
-  if (bins[60] >=  50)
-    accum += (min(50, bins[60] -  50) << 14);
-  if (bins[70] >= 500)
-    accum = sat_sub_u32(accum, min(50, bins[70] - 500) << 16);
-  if (bins[80] >= 200)
-    accum = sat_sub_u32(accum, min(50, bins[80] - 200) << 16);
+  // Cancel out extraneous triggers (maybe inhalation, or noise)
+  if (sum_lo * 10000 / enr_total >= 200)
+    accum = sat_sub_u32(accum, min(100, sum_lo * 10000 / enr_total) << 4);
+  if (bins[0] >= 2000)
+    accum = sat_sub_u32(accum, min(1000, bins[0] - 2000));
+
+  if (bins[10] >= 100)
+    accum += min(100, bins[40] - 100) << 8;
+  if (bins[40] >= 20)
+    accum += min(20, bins[40] - 20) << 8;
 
   if (!signal) {
-    if (accum >= 0x200000) signal = true;
+    if (accum >= 0x4000) signal = true;
   } else {
-    if (accum < 0x1a0000 - held * 0x5000) {
+    if (accum < 0x4000 - held * 0x180) {
       signal = false;
       held = 0;
     } else {
-      if (held < 40) held++;
+      if (held < 20) held++;
     }
   }
   breath_signal = signal;
   accum >>= 1;
 
   if (++count >= 0.2 * 51563 / audio_in_buf_half_size) {
+    // for (int i = 0; i < 10; i++) my_printf(" %010u", buf[i]); my_printf("\n");
+
   /*
     my_printf("[%8u] p-p %10u |", to_ms_since_boot(get_absolute_time()), diff);
     for (int i = 512; i <= 1024; i += 8) {
@@ -1149,27 +1151,47 @@ void consume_buffer(const int32_t *buf)
       for (int j = i; j < i + 8; j++) sum += ampl[j];
       sum /= 8;
       my_printf("%c",
-        sum >= 300 ? '#' :
-        sum >= 100 ? '*' :
-        sum >=  25 ? '.' :
+        sum >= 5000 ? '#' :
+        sum >= 2000 ? '*' :
+        sum >= 1000 ? '.' :
         ' ');
     }
     my_printf("|\n");
   */
 
-  /*
     my_printf("[%8u] | ", to_ms_since_boot(get_absolute_time()));
-    my_printf("%8x | %10u %6u %6u |",
+    my_printf("%8x | %10u %6u %5u %8u |",
       accum,
       diff,
       (uint32_t)min(999999, enr_total / 1000),
-      (uint32_t)llabs(sum_hi - hi_ema)
+      (uint32_t)(sum_lo * 1000 / enr_total),
+      min(99999999, (uint32_t)llabs(sum_lo - lo_ema))
     );
     uint32_t pivot = bins[30];
-    for (int i = 0; i < 90; i += 5)
+    for (int i = 0; i < 80; i += 5)
       my_printf(" %5u", min(99999, bins[i]));
     my_printf("\n");
     count = 0;
+
+  /*
+    my_printf("[%8u] | ", to_ms_since_boot(get_absolute_time()));
+    my_printf("%8x | %10u %5u %8u |",
+      accum,
+      diff,
+      (uint32_t)(sum_lo * 1000 / enr_total),
+      min(99999999, (uint32_t)llabs(sum_lo - lo_ema))
+    );
+    for (int i = 0; i <= 1024; i += 16) {
+      uint32_t sum = 0;
+      for (int j = i; j < i + 16; j++) sum += ampl[j];
+      sum /= 16;
+      my_printf("%c",
+        sum >= 5000 ? '#' :
+        sum >= 2000 ? '*' :
+        sum >= 1000 ? '.' :
+        ' ');
+    }
+    my_printf("|\n");
   */
   }
 }
