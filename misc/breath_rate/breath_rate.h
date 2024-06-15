@@ -11,6 +11,8 @@ typedef struct {
   uint32_t rate;
   uint32_t cur;
 
+  uint32_t min_rate, max_rate;
+
   bool last_value;
   bool updated_in_cur_cycle;
 } breath_rate_estimator;
@@ -42,6 +44,10 @@ static inline int breath_rate_feed(breath_rate_estimator *e, bool value)
         // Interrupted! Shorten duration
         e->updated_in_cur_cycle = true;
         e->rate = e->cur * 2;
+        if (e->rate < e->min_rate) {
+          e->rate = e->min_rate;
+          e->cur = e->rate / 2;
+        }
         return -2;
       }
       return +1;
@@ -55,6 +61,9 @@ static inline int breath_rate_feed(breath_rate_estimator *e, bool value)
       // Stretched! Lengthen duration
       e->updated_in_cur_cycle = true;
       e->rate = e->cur + e->rate / 2;
+      if (e->rate > e->max_rate) {
+        e->rate = e->max_rate;
+      }
       return -1;
     }
   }

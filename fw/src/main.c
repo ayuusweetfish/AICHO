@@ -21,6 +21,7 @@
 #include "uqoa.h"
 
 #include "leds.h"
+#include "../../misc/breath_rate/breath_rate.h"
 
 #define IN_HOUSE_TEST 1
 
@@ -732,6 +733,8 @@ if (0) {
   int8_t org_id;        // For `SINGLE_RUN` and `FOLLOWER_RUN`
   uint32_t state_time;  // Duration into the current state, invalid for `IDLE`
 
+  breath_rate_estimator bre;  // Estimator for `FOLLOWER_RUN`
+
   // Updates `pump_dir_signals` from `org_key` and breath signals (TODO)
   void update_signals(uint32_t t) {
     // Q - inflate
@@ -739,7 +742,7 @@ if (0) {
     // E - leak
     // pump_dir_signals[0] = (org_key[0] ? +2 : org_key[1] ? -2 : org_key[2] ? -1 : +1);
 
-    gpio_put(act_2, breath_signal);
+    // gpio_put(act_2, breath_signal);
 
     if (state == SINGLE_RUN) {
       int last_phase = (state_time == 0 ? -1 : state_time / 2000);
@@ -763,7 +766,20 @@ if (0) {
         }
       }
     } else if (state == FOLLOWER_RUN) {
-      // TODO: Check breath signals
+      bool new_inhale = false;
+      bool new_exhale = false;
+      int state = -1;
+      for (int i = 0; i < t; i++) {
+        state = breath_rate_feed(&bre, breath_signal);
+        if (state == +2) { new_inhale = true; state = +1; }
+        if (state == -2) { new_exhale = true; state = -1; }
+      }
+      if (new_exhale)
+        ps1_organism(org_id, 1);
+      else if (new_inhale)
+        ps1_organism(org_id, 0);
+      gpio_put(act_2, state > 0);
+      gpio_put(act_1, breath_signal);
     }
 
     static int pressed_key = -1;
@@ -783,6 +799,12 @@ if (0) {
             state = FOLLOWER_RUN;
             org_id = pressed_key;
             state_time = 0;
+            bre = (breath_rate_estimator){
+              .rate = 6000,
+              .cur = 5999,
+              .min_rate = 4000,
+              .max_rate = 8000,
+            };
           }
         }
       } else if (pressed_key == -1) {
