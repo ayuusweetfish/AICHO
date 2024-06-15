@@ -22,7 +22,7 @@
 
 #include "leds.h"
 
-#define TESTRUN 0
+#define IN_HOUSE_TEST 1
 
 #define max(_a, _b) ((_a) > (_b) ? (_a) : (_b))
 #define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
@@ -389,15 +389,21 @@ static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_
     // Note: the scaler should be at least equal to
     //  `POLYPHONY` * 4 (dynamic range, from 0x4000 to 0x7fff) = 32
     // i.e., 0x60000000 + ((0x7fff * POLYPHONY) << 9) <= 0x7fffffff
+  #if IN_HOUSE_TEST
+    #define MIX_SHL 9
+  #else
+    #define MIX_SHL 10
+  #endif
   #if STEREO
-    int32_t sample_l = 0x60000000 + (mix[0][j] << 10);
-    int32_t sample_r = 0x60000000 + (mix[1][j] << 10);
+    int32_t sample_l = 0x60000000 + (mix[0][j] << MIX_SHL);
+    int32_t sample_r = 0x60000000 + (mix[1][j] << MIX_SHL);
     out[j * 2 + 0] = sample_l;
     out[j * 2 + 1] = sample_r;
   #else
-    int32_t sample = 0x60000000 + (mix[j] << 10);
+    int32_t sample = 0x60000000 + (mix[j] << MIX_SHL);
     out[j * 2] = out[j * 2 + 1] = sample;
   #endif
+  #undef MIX_SHL
   }
 }
 
@@ -826,7 +832,11 @@ if (0) {
     // Format: ~AICHO+Q (press Q) ~AICHO+q (release Q)
     static int pwd_count = 0;
     static const char pwd[] = "~AICHO+";
+  #if IN_HOUSE_TEST
+    static const int pwd_len = 0;
+  #else
     static const int pwd_len = (sizeof pwd) - 1;
+  #endif
     while (uart_is_readable(uart0)) {
       char c = uart_getc(uart0);
       if (pwd_count == pwd_len) {
@@ -1042,29 +1052,6 @@ void core1_entry()
 
   audio_in_init();
   audio_in_resume();
-
-#if TESTRUN
-  while (1) {
-    static uint32_t i = 0;
-    i++;
-    // gpio_put(act_2, 1); sleep_ms(100);
-    // gpio_put(act_2, 0); sleep_ms(200);
-    sleep_ms(300);
-    // my_printf("[%8u] Hello, UART %u!\n", to_ms_since_boot(get_absolute_time()), i);
-    if (i % 10 == 3) {
-      int org = ((i / 10 + 1) / 2) % 6;
-      int dir = (i / 10 + 1) % 2;
-      if (org < 2) {
-        int group = org;
-        for (int org = group; org < 4; org++)
-          ps1_organism(org, dir);
-      } else {
-        org -= 2;
-        ps1_organism(org, dir);
-      }
-    }
-  }
-#endif
 
   while (1) sleep_ms(1000);
 }
