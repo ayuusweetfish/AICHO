@@ -271,7 +271,7 @@ static inline void sampler_mix(struct sampler *s, int32_t out[20])
 }
 
 #define POLYPHONY 8
-#define STEREO 0
+#define STEREO 1
 struct polyphonic_sampler {
   critical_section_t crit;
   struct sampler s[POLYPHONY];
@@ -390,12 +390,12 @@ static inline void polyphonic_out(struct polyphonic_sampler *restrict s, uint32_
     //  `POLYPHONY` * 4 (dynamic range, from 0x4000 to 0x7fff) = 32
     // i.e., 0x60000000 + ((0x7fff * POLYPHONY) << 9) <= 0x7fffffff
   #if STEREO
-    int32_t sample_l = 0x60000000 + (mix[0][j] << 9);
-    int32_t sample_r = 0x60000000 + (mix[1][j] << 9);
+    int32_t sample_l = 0x60000000 + (mix[0][j] << 10);
+    int32_t sample_r = 0x60000000 + (mix[1][j] << 10);
     out[j * 2 + 0] = sample_l;
     out[j * 2 + 1] = sample_r;
   #else
-    int32_t sample = 0x60000000 + (mix[j] << 9);
+    int32_t sample = 0x60000000 + (mix[j] << 10);
     out[j * 2] = out[j * 2 + 1] = sample;
   #endif
   }
