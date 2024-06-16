@@ -23,7 +23,7 @@
 #include "leds.h"
 #include "../../misc/breath_rate/breath_rate.h"
 
-#define IN_HOUSE_TEST 1
+#define IN_HOUSE_TEST 0
 
 #define max(_a, _b) ((_a) > (_b) ? (_a) : (_b))
 #define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
@@ -735,6 +735,7 @@ if (0) {
   uint32_t state_time;  // Duration into the current state, invalid for `IDLE`
 
   breath_rate_estimator bre;  // Estimator for `FOLLOWER_RUN`
+  bool tail_entry;      // Whether `FOLLOWER_RUN_TAIL` should be entered on cycle end during `FOLLOWER_RUN_TAIL`
   uint32_t phase_dur;   // Breath rate (half of cycle duration) for `FOLLOWER_RUN_TAIL`
 
   // Updates `pump_dir_signals` from `org_key` and breath signals (TODO)
@@ -771,19 +772,25 @@ if (0) {
       state_time += t;
       bool new_inhale = false;
       bool new_exhale = false;
-      int state = -1;
+      int air_state = -1;
       for (int i = 0; i < t; i++) {
-        state = breath_rate_feed(&bre, breath_signal);
-        if (state == +2) { new_inhale = true; state = +1; }
-        if (state == -2) { new_exhale = true; state = -1; }
+        air_state = breath_rate_feed(&bre, breath_signal);
+        if (air_state == +2) { new_inhale = true; air_state = +1; }
+        if (air_state == -2) { new_exhale = true; air_state = -1; }
+      }
+      if (new_inhale && tail_entry) {
+        state = FOLLOWER_RUN_TAIL;
+        state_time = 0;
+        new_inhale = false;
+        air_state = -1;
       }
       if (new_exhale)
         ps1_organism(org_id, 1);
       else if (new_inhale)
         ps1_organism(org_id, 0);
-      gpio_put(act_2, state > 0);
+      gpio_put(act_2, air_state > 0);
       gpio_put(act_1, breath_signal);
-      pump_dir_signals[org_id] = (state > 0 ? +2 : -2);
+      pump_dir_signals[org_id] = (air_state > 0 ? +2 : -2);
     } else if (state == FOLLOWER_RUN_TAIL) {
       // XXX: DRY
       int last_phase = (state_time == 0 ? -1 : state_time / phase_dur);
@@ -838,6 +845,7 @@ if (0) {
               .min_rate = 4000,
               .max_rate = 8000,
             };
+            tail_entry = false;
           }
         }
       } else if (pressed_key == -1) {
@@ -864,8 +872,7 @@ if (0) {
         } else {
           if (state == FOLLOWER_RUN && org_id == pressed_key) {
             my_printf("long %d end\n", pressed_key);
-            state = FOLLOWER_RUN_TAIL;
-            state_time = 0;
+            tail_entry = true;
             phase_dur = bre.rate / 2;
           }
         }
