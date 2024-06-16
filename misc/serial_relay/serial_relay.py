@@ -1,3 +1,6 @@
+# keyboard==0.13.5
+# pyserial==3.5
+
 import datetime
 import keyboard
 import serial
@@ -17,7 +20,8 @@ while True:
       log(port, desc)
       # Windows: port="COMxx" desc="USB 串行设备 (COMxx)"
       # macOS: port="/dev/cu.usbmodemxxxxxx" desc="DAPLink CMSIS-DAP - mbed Serial Port"
-      if 'USB' in desc or 'DAPLink' in desc:
+      # macOS: port="/dev/cu.usbmodemxxxxxx" desc="Debugprobe on Pico (CMSIS-DAP)"
+      if 'USB' in desc or 'CMSIS' in desc:
         sel_serial = serial.Serial(port, 115200)
         break
 
@@ -32,7 +36,6 @@ while True:
         if last != cur:
           data = '~AICHO+' + (c.upper() if cur else c.lower())
           sel_serial.write(data.encode())
-          # print(data)
       last_down = cur_down
       time.sleep(0.01)
 
