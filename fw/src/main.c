@@ -723,7 +723,8 @@ if (0) {
   multicore_launch_core1(core1_entry);
 
   // See `pump()` signal values
-  int pump_dir_signals[4] = { 0 };
+  // Default to full idle on startup to avoid overheating
+  int pump_dir_signals[4] = { +1, +1, +1, +1 };
 
   enum state_t {
     IDLE,
@@ -753,8 +754,10 @@ if (0) {
       int cur_phase = state_time / 2000;
       if (state_time >= 20000) {
         state = IDLE;
+        state_time = 0;
+        // Leak
         for (int i = 0; i < 4; i++)
-          pump_dir_signals[i] = +1;
+          pump_dir_signals[i] = -1;
       } else if (cur_phase != last_phase) {
         if (cur_phase < 4) {
           pump_dir_signals[org_id] = (cur_phase % 2 == 0 ? +2 : -2);
@@ -955,7 +958,7 @@ if (0) {
       // Drain remaining air
       for (int i = 0; i < 4; i++) pump(i, -2);
       startup = false;
-      return (struct proceed_t){task_pumps, 2500000};
+      return (struct proceed_t){task_pumps, 3000000};
     }
 
     if (missed > 0) {
