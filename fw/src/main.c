@@ -833,7 +833,7 @@ if (0) {
       if (cur_pressed_key == pressed_key) {
         // Held
         pressed_dur += 1;
-        if (pressed_dur == 500) {
+        if (pressed_dur == 750) {
           if (state == IDLE) {
             my_printf("long %d start\n", pressed_key);
             state = FOLLOWER_RUN;
@@ -862,7 +862,7 @@ if (0) {
       // No key pressed
       if (pressed_key != -1) {
         // Release
-        if (pressed_dur < 500) {
+        if (pressed_dur < 750) {
           if (state == IDLE) {
             my_printf("short %d\n", pressed_key);
             state = SINGLE_RUN;
@@ -1231,14 +1231,14 @@ void consume_buffer(const int32_t *buf)
     accum += min(20, bins[40] - 20) << 8;
 
   if (!signal) {
-    if (accum >= 0x2000) {
+    if (accum >= 0x1c00) {
       on_held += (accum >= 0x4000 ? 2 : 1);
       if (on_held >= 10) signal = true;
     } else {
       on_held = 0;
     }
   } else {
-    if (accum < 0x2000 - held * 0x100) {
+    if (accum < 0x1c00 - held * 0x100) {
       signal = false;
       held = 0;
     } else {
