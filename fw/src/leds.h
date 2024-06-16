@@ -130,7 +130,7 @@ void gradient_Harmonia(int intensity, uint8_t out[][4][3]) {
   }
 }
 
-#define LED_N_Titanus 31
+#define LED_N_Titanus 120
 void gradient_Titanus(int intensity, uint8_t out[][4][3]) {
   for (int i = 0; i < LED_N_Titanus; i++) {
     int saturation = 255 - (255 - intensity / 16) / 2;

@@ -437,7 +437,7 @@ void leds_init()
 void leds_blast(uint8_t a[][4][3], int n)
 {
   // Little-endian, PIO shifts right
-  static uint8_t leds_buf[96][12];
+  static uint8_t leds_buf[120][12];
   assert(n <= sizeof leds_buf / sizeof leds_buf[0]);
 
   for (int i = 0; i < n; i++) {
@@ -1010,10 +1010,10 @@ if (0) {
   };
 
   struct proceed_t task_leds(uint32_t _missed) {
-    uint8_t a[96][4][3] = {{{ 0 }}};
+    uint8_t a[120][4][3] = {{{ 0 }}};
     static uint32_t n = 0;
     for (int strip = 1; strip < 1; strip++) {
-      for (int i = 0; i < 96; i++) {
+      for (int i = 0; i < 120; i++) {
         int32_t x = 4 - (int32_t)(i + strip + n / 8) % 8;
         a[i][strip][strip % 3] = x < 0 ? -x : x;
       }
@@ -1091,8 +1091,8 @@ if (0) {
       gradient_Titanus(4096, a);
     }
     n++;
-    // 96 * 24 / 800 kHz = 2.88 ms
-    leds_blast(a, 96);
+    // 120 * 24 / 800 kHz = 3.6 ms
+    leds_blast(a, 120);
     return (struct proceed_t){task_leds, 10000};  // 10 ms = 100 fps
   };
 
