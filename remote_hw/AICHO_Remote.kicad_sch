@@ -3603,7 +3603,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 133.35) (xy 82.55 133.35)
+			(xy 85.09 135.89) (xy 82.55 135.89)
 		)
 		(stroke
 			(width 0)
@@ -3931,8 +3931,8 @@
 		)
 		(uuid "0343cee5-949a-4285-bb59-74365a5d0bc7")
 	)
-	(label "SERVO_SIG"
-		(at 85.09 133.35 0)
+	(label "LIGHT_SIG"
+		(at 85.09 135.89 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -4011,7 +4011,7 @@
 		)
 		(uuid "75323522-1e1f-4f89-a8d5-da9f7dabebfc")
 	)
-	(label "SERVO_SIG"
+	(label "LIGHT_SIG"
 		(at 180.34 99.06 0)
 		(effects
 			(font
@@ -6233,7 +6233,7 @@
 	)
 	(symbol
 		(lib_id "power:+5V")
-		(at 82.55 135.89 270)
+		(at 82.55 133.35 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -6241,7 +6241,7 @@
 		(dnp no)
 		(uuid "8a5cd498-0901-448e-8315-cf6411a8e06d")
 		(property "Reference" "#PWR016"
-			(at 78.74 135.89 0)
+			(at 78.74 133.35 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6250,7 +6250,7 @@
 			)
 		)
 		(property "Value" "+5V"
-			(at 87.63 135.89 90)
+			(at 87.376 132.08 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6258,7 +6258,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 82.55 135.89 0)
+			(at 82.55 133.35 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6267,7 +6267,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 82.55 135.89 0)
+			(at 82.55 133.35 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6276,7 +6276,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+5V\""
-			(at 82.55 135.89 0)
+			(at 82.55 133.35 0)
 			(effects
 				(font
 					(size 1.27 1.27)
