@@ -3127,18 +3127,6 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "PA0 AF9 USART2_TX"
-		(exclude_from_sim no)
-		(at 178.308 58.674 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-				(italic yes)
-			)
-			(justify left bottom)
-		)
-		(uuid "017d3926-9e6b-429c-8f19-d335d18a4677")
-	)
 	(text "BOOT"
 		(exclude_from_sim no)
 		(at 190.754 83.312 0)
@@ -3163,18 +3151,6 @@
 		)
 		(uuid "38d303d4-0e53-4a90-bdd8-7c0307399317")
 	)
-	(text "PA3 AF4 USART2_RX"
-		(exclude_from_sim no)
-		(at 170.942 56.388 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-				(italic yes)
-			)
-			(justify left bottom)
-		)
-		(uuid "51f7b3ba-d798-493c-b3dc-7443464ba781")
-	)
 	(text "0.596 V ± 2.5%"
 		(exclude_from_sim no)
 		(at 98.806 45.974 0)
@@ -3186,42 +3162,6 @@
 			(justify left bottom)
 		)
 		(uuid "825553ba-bd8b-41bd-b07f-9133e2ba8212")
-	)
-	(text "PA14 AF0 SWCLK"
-		(exclude_from_sim no)
-		(at 173.482 104.902 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-				(italic yes)
-			)
-			(justify left bottom)
-		)
-		(uuid "a474b4d6-6298-4536-a42b-03fb40b4729e")
-	)
-	(text "PA13 AF0 SWDIO"
-		(exclude_from_sim no)
-		(at 170.942 107.442 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-				(italic yes)
-			)
-			(justify left bottom)
-		)
-		(uuid "a6ecceb3-6acc-45b2-bf02-948574f77c14")
-	)
-	(text "PB6 AF2 TIM16_CH1N"
-		(exclude_from_sim no)
-		(at 180.34 101.346 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-				(italic yes)
-			)
-			(justify left bottom)
-		)
-		(uuid "dd50f24b-2423-4191-a8db-9d23804b471f")
 	)
 	(junction
 		(at 29.21 29.21)
@@ -3332,6 +3272,10 @@
 		(uuid "f7a74166-3e4c-4afe-8766-2111362ceb3e")
 	)
 	(no_connect
+		(at 177.8 67.31)
+		(uuid "05e7a714-b505-472d-b333-c934923140fc")
+	)
+	(no_connect
 		(at 161.29 86.36)
 		(uuid "18af1f92-47ec-4a5f-8d1a-3f96e2a991a4")
 	)
@@ -3344,24 +3288,12 @@
 		(uuid "5a322fd4-fd87-49d1-9b53-00de9324427d")
 	)
 	(no_connect
-		(at 189.23 86.36)
-		(uuid "633e1fef-b397-47d3-9e5f-2d99116c86ae")
-	)
-	(no_connect
-		(at 161.29 78.74)
-		(uuid "78b360aa-4d20-4e33-a712-d76015ffd588")
-	)
-	(no_connect
 		(at 78.74 34.29)
 		(uuid "7e40a514-5621-4ccc-9ed1-d04a115cc663")
 	)
 	(no_connect
-		(at 161.29 76.2)
-		(uuid "94b9863e-f84e-48b3-b3f9-d94cb6ce0bd1")
-	)
-	(no_connect
 		(at 161.29 81.28)
-		(uuid "b130dcea-cb92-4470-a04e-5ed0618ece87")
+		(uuid "9df56a73-0174-46cd-ac8b-e2e891e5972b")
 	)
 	(no_connect
 		(at 177.8 95.25)
@@ -3370,6 +3302,14 @@
 	(no_connect
 		(at 189.23 83.82)
 		(uuid "b9ce1059-b687-47a9-bc09-b7deb5494e62")
+	)
+	(no_connect
+		(at 180.34 67.31)
+		(uuid "e49c9548-26f3-4555-a0fb-016661d787a2")
+	)
+	(no_connect
+		(at 172.72 67.31)
+		(uuid "e4b79873-8510-4670-a138-cc1dc1792bbc")
 	)
 	(wire
 		(pts
@@ -3663,6 +3603,16 @@
 	)
 	(wire
 		(pts
+			(xy 170.18 64.77) (xy 170.18 67.31)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "74331cb5-f889-4664-8b00-f856b75d92e7")
+	)
+	(wire
+		(pts
 			(xy 189.23 78.74) (xy 195.58 78.74)
 		)
 		(stroke
@@ -3941,16 +3891,6 @@
 		)
 		(uuid "0ce6a10b-da30-41e5-8631-d3203da6e26e")
 	)
-	(label "UART_RX"
-		(at 172.72 67.31 90)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "167b7bf4-bcbd-456f-88f1-e40466ab6bb9")
-	)
 	(label "SWDIO"
 		(at 172.72 95.25 270)
 		(effects
@@ -3971,16 +3911,6 @@
 		)
 		(uuid "3e84b35b-df82-4ae1-85ee-f736276510dd")
 	)
-	(label "UART_TX"
-		(at 180.34 67.31 90)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "448e8bd1-ae40-46b8-a282-88197a38fe2f")
-	)
 	(label "SWDIO"
 		(at 133.35 100.33 180)
 		(effects
@@ -3990,6 +3920,16 @@
 			(justify right bottom)
 		)
 		(uuid "7273c456-fb95-4c75-85e2-d3cbffe76950")
+	)
+	(label "DE"
+		(at 161.29 78.74 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "74b93912-206b-43d5-a07b-f122061964ed")
 	)
 	(label "ACT_LED"
 		(at 205.74 96.52 180)
@@ -4011,8 +3951,8 @@
 		)
 		(uuid "75323522-1e1f-4f89-a8d5-da9f7dabebfc")
 	)
-	(label "LIGHT_SIG"
-		(at 180.34 99.06 0)
+	(label "ACT_LED"
+		(at 189.23 86.36 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -4020,6 +3960,16 @@
 			(justify left bottom)
 		)
 		(uuid "7eabcae5-3a44-4d61-a9d1-cefb7ffd43b6")
+	)
+	(label "UART_RX"
+		(at 161.29 76.2 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "83a28813-0051-48c2-9784-6bb89c504459")
 	)
 	(label "RS485_B"
 		(at 186.69 135.89 0)
@@ -4041,26 +3991,6 @@
 		)
 		(uuid "a3d1d72f-6cb0-4f15-8624-7897deb6d7d6")
 	)
-	(label "DE"
-		(at 177.8 67.31 90)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "a8b8305d-a64d-41a7-b6d2-98b2e3eb0ed7")
-	)
-	(label "ACT_LED"
-		(at 170.18 67.31 90)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "b241f78b-dbf8-4ed7-a2b8-6fde24a748ee")
-	)
 	(label "SWCLK"
 		(at 133.35 97.79 180)
 		(effects
@@ -4070,6 +4000,16 @@
 			(justify right bottom)
 		)
 		(uuid "c5013e80-f180-419e-b083-08407aa51404")
+	)
+	(label "UART_TX"
+		(at 170.18 64.77 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "d2d796d9-11cb-43f7-8ce7-15d6fa68f1a4")
 	)
 	(label "SWCLK"
 		(at 175.26 95.25 270)
@@ -4090,6 +4030,16 @@
 			(justify left bottom)
 		)
 		(uuid "dea3345e-4750-4105-a0c8-6a43689a7204")
+	)
+	(label "LIGHT_SIG"
+		(at 180.34 99.06 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "ec4f9cbb-ad08-4670-b47e-22ac274baae0")
 	)
 	(label "RS485_A"
 		(at 186.69 128.27 0)
