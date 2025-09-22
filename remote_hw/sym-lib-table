@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "PY32F003")(type "KiCad")(uri "${KIPRJMOD}/libs/PY32/PY32F003.kicad_sym")(options "")(descr ""))
+)
