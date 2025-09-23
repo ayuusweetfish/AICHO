@@ -3947,32 +3947,6 @@
 				)
 			)
 		)
-		(property "LCSC PN" "C338080"
-			(at 0 0 90)
-			(unlocked yes)
-			(layer "F.Fab")
-			(hide yes)
-			(uuid "3247eb4f-adad-4600-ad4c-76359bb4143f")
-			(effects
-				(font
-					(size 1 1)
-					(thickness 0.15)
-				)
-			)
-		)
-		(property "Mfr PN" "C2012X5R1V226MT000E"
-			(at 0 0 90)
-			(unlocked yes)
-			(layer "F.Fab")
-			(hide yes)
-			(uuid "26f87372-92b9-4fe7-a8e9-72fd4eb6ff90")
-			(effects
-				(font
-					(size 1 1)
-					(thickness 0.15)
-				)
-			)
-		)
 		(property ki_fp_filters "C_*")
 		(path "/b726552f-a851-45cd-87f4-804216bfe95b")
 		(sheetname "/")
@@ -4172,7 +4146,7 @@
 				)
 			)
 		)
-		(property "Value" "6.8k"
+		(property "Value" "4.7k"
 			(at 0 1.17 90)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -6890,32 +6864,6 @@
 			(effects
 				(font
 					(size 1.27 1.27)
-					(thickness 0.15)
-				)
-			)
-		)
-		(property "LCSC PN" "C338080"
-			(at 0 0 90)
-			(unlocked yes)
-			(layer "F.Fab")
-			(hide yes)
-			(uuid "7b56c647-a9f0-4c63-a4af-aaecfb20f7de")
-			(effects
-				(font
-					(size 1 1)
-					(thickness 0.15)
-				)
-			)
-		)
-		(property "Mfr PN" "C2012X5R1V226MT000E"
-			(at 0 0 90)
-			(unlocked yes)
-			(layer "F.Fab")
-			(hide yes)
-			(uuid "7899773a-b5fe-4ed6-a59b-867db7981665")
-			(effects
-				(font
-					(size 1 1)
 					(thickness 0.15)
 				)
 			)

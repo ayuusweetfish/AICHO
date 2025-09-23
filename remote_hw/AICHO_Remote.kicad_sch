@@ -4405,7 +4405,7 @@
 				)
 			)
 		)
-		(property "Value" "6.8k"
+		(property "Value" "4.7k"
 			(at 218.186 94.996 90)
 			(effects
 				(font
@@ -5395,24 +5395,6 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
-			(at 58.42 33.02 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "LCSC PN" "C338080"
-			(at 58.42 33.02 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Mfr PN" "C2012X5R1V226MT000E"
 			(at 58.42 33.02 0)
 			(effects
 				(font
@@ -7040,24 +7022,6 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
-			(at 44.45 33.02 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "LCSC PN" "C338080"
-			(at 44.45 33.02 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Mfr PN" "C2012X5R1V226MT000E"
 			(at 44.45 33.02 0)
 			(effects
 				(font
