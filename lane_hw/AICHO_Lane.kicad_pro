@@ -462,8 +462,14 @@
     }
   },
   "libraries": {
-    "pinned_footprint_libs": [],
-    "pinned_symbol_libs": []
+    "pinned_footprint_libs": [
+      "XGZP6847A",
+      "RJ45",
+      "TestPoints_P2.00"
+    ],
+    "pinned_symbol_libs": [
+      "PY32F003"
+    ]
   },
   "meta": {
     "filename": "AICHO_Lane.kicad_pro",

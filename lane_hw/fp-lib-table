@@ -2,4 +2,5 @@
   (version 7)
   (lib (name "RJ45")(type "KiCad")(uri "${KIPRJMOD}/libs/RJ45.pretty")(options "")(descr ""))
   (lib (name "TestPoints_P2.00")(type "KiCad")(uri "${KIPRJMOD}/libs/TestPoints_P2.00.pretty")(options "")(descr ""))
+  (lib (name "XGZP6847A")(type "KiCad")(uri "${KIPRJMOD}/libs/XGZP6847A.pretty")(options "")(descr ""))
 )
