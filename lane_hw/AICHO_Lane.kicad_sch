@@ -4823,10 +4823,6 @@
 		(uuid "18af1f92-47ec-4a5f-8d1a-3f96e2a991a4")
 	)
 	(no_connect
-		(at 123.19 121.92)
-		(uuid "559fe3bc-892d-47fc-8c6a-09ee81d2786c")
-	)
-	(no_connect
 		(at 132.08 102.87)
 		(uuid "5a322fd4-fd87-49d1-9b53-00de9324427d")
 	)
@@ -4849,6 +4845,10 @@
 	(no_connect
 		(at 152.4 143.51)
 		(uuid "c7eb8a40-a2b5-475c-9a0a-47a38ad3eeb7")
+	)
+	(no_connect
+		(at 104.14 107.95)
+		(uuid "fd5ac1bb-131c-4dc9-8c9a-511bb7253910")
 	)
 	(wire
 		(pts
@@ -5662,6 +5662,16 @@
 	)
 	(wire
 		(pts
+			(xy 123.19 121.92) (xy 123.19 124.46)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bbd43dae-fa55-4ea9-b678-3e01dc19316b")
+	)
+	(wire
+		(pts
 			(xy 217.17 71.12) (xy 220.98 71.12)
 		)
 		(stroke
@@ -5862,7 +5872,7 @@
 	)
 	(wire
 		(pts
-			(xy 115.57 90.17) (xy 115.57 93.98)
+			(xy 115.57 86.36) (xy 115.57 93.98)
 		)
 		(stroke
 			(width 0)
@@ -5990,7 +6000,7 @@
 		)
 		(uuid "0343cee5-949a-4285-bb59-74365a5d0bc7")
 	)
-	(label "PUMP_2"
+	(label "UART2_RX"
 		(at 104.14 102.87 180)
 		(effects
 			(font
@@ -6000,13 +6010,13 @@
 		)
 		(uuid "09be716f-338d-496a-979e-eac66966f6d0")
 	)
-	(label "PRESSURE_SENSOR"
-		(at 115.57 90.17 180)
+	(label "PUMP_1"
+		(at 115.57 86.36 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify right bottom)
+			(justify left bottom)
 		)
 		(uuid "27aa22d4-1b69-4189-bf07-62f6c988ac69")
 	)
@@ -6031,12 +6041,12 @@
 		(uuid "31f91a08-ad85-4508-89ff-1fdd62bd6732")
 	)
 	(label "UART1_TX"
-		(at 104.14 107.95 180)
+		(at 123.19 124.46 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify right bottom)
+			(justify left bottom)
 		)
 		(uuid "335226cd-c407-43ee-9dc4-0165ef0c0886")
 	)
@@ -6070,7 +6080,7 @@
 		)
 		(uuid "7273c456-fb95-4c75-85e2-d3cbffe76950")
 	)
-	(label "DE"
+	(label "PUMP_2"
 		(at 118.11 88.9 0)
 		(effects
 			(font
@@ -6120,7 +6130,7 @@
 		)
 		(uuid "7eabcae5-3a44-4d61-a9d1-cefb7ffd43b6")
 	)
-	(label "PUMP_3"
+	(label "DE"
 		(at 104.14 105.41 180)
 		(effects
 			(font
@@ -6130,7 +6140,7 @@
 		)
 		(uuid "821a4c41-f3bb-48e3-92a2-00ec4ec8f3e0")
 	)
-	(label "UART2_RX"
+	(label "PUMP_3"
 		(at 120.65 91.44 0)
 		(effects
 			(font
@@ -6170,7 +6180,7 @@
 		)
 		(uuid "a3d1d72f-6cb0-4f15-8624-7897deb6d7d6")
 	)
-	(label "PUMP_1"
+	(label "UART2_TX"
 		(at 113.03 93.98 180)
 		(effects
 			(font
@@ -6200,7 +6210,7 @@
 		)
 		(uuid "c5013e80-f180-419e-b083-08407aa51404")
 	)
-	(label "UART2_TX"
+	(label "PRESSURE_SENSOR"
 		(at 123.19 93.98 0)
 		(effects
 			(font
