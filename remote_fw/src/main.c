@@ -111,7 +111,7 @@ int main()
       .PeriphInc = DMA_PINC_DISABLE,
       .MemInc = DMA_MINC_ENABLE,
       .PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD,
-      .MemDataAlignment = DMA_MDATAALIGN_HALFWORD,
+      .MemDataAlignment = DMA_MDATAALIGN_BYTE,
       .Mode = DMA_NORMAL,
       .Priority = DMA_PRIORITY_HIGH,
     },
@@ -130,7 +130,8 @@ int main()
 }
 
   void send_lights(int n, const uint32_t a[]) {
-    static uint16_t light_buf[24 * 50 + 1];
+    static uint8_t light_buf[24 * 50 + 1];
+    if (n > 50) n = 50;
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < 24; j++)
         light_buf[i * 24 + j] = ((a[i] >> (23 - j)) & 1 ? 13 : 6);
