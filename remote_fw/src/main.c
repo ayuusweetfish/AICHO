@@ -8,6 +8,13 @@
 // #define RELEASE
 #include "debug_printf.h"
 
+#define LED_WRITE_I(_i, _c) do { \
+  for (int i = 0; i < 8; i++) out[(_i) * 24 +  0 + i] = ((_c).g >> (7 - i)) & 1 ? 13 : 6; \
+  for (int i = 0; i < 8; i++) out[(_i) * 24 +  8 + i] = ((_c).r >> (7 - i)) & 1 ? 13 : 6; \
+  for (int i = 0; i < 8; i++) out[(_i) * 24 + 16 + i] = ((_c).b >> (7 - i)) & 1 ? 13 : 6; \
+} while (0)
+#include "leds.h"
+
 static void spin_delay(uint32_t cycles)
 {
   __asm__ volatile (
@@ -129,16 +136,19 @@ int main()
   HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_3);
 }
 
+  void send_lights_raw(int n, const uint8_t light_buf[]) {
+    HAL_DMA_PollForTransfer(&dma1_ch1, HAL_DMA_FULL_TRANSFER, 0);
+    HAL_DMA_Start(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, n * 24 + 1);
+  }
   void send_lights(int n, const uint32_t a[]) {
-    static uint8_t light_buf[24 * 50 + 1];
-    if (n > 50) n = 50;
+    static uint8_t light_buf[24 * 8 + 1];
+    if (n >= 8) n = 8;
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < 24; j++)
         light_buf[i * 24 + j] = ((a[i] >> (23 - j)) & 1 ? 13 : 6);
     }
     light_buf[n * 24] = 0;
-    HAL_DMA_PollForTransfer(&dma1_ch1, HAL_DMA_FULL_TRANSFER, 0);
-    HAL_DMA_Start(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, n * 24 + 1);
+    send_lights_raw(n, light_buf);
   }
 
   while (1) {
