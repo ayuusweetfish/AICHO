@@ -113,21 +113,23 @@ int main()
       .PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD,
       .MemDataAlignment = DMA_MDATAALIGN_HALFWORD,
       .Mode = DMA_NORMAL,
-      .Priority = DMA_PRIORITY_MEDIUM,
+      .Priority = DMA_PRIORITY_HIGH,
     },
   };
   HAL_DMA_Init(&dma1_ch1);
   HAL_DMA_ChannelMap(&dma1_ch1, DMA_CHANNEL_MAP_TIM1_CH3);
   __HAL_LINKDMA(&tim1, hdma[TIM_DMA_ID_CC3], dma1_ch1);
+  __HAL_TIM_ENABLE_OCxPRELOAD(&tim1, TIM_CHANNEL_3);
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 15, 1);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
-  static uint16_t light_buf[180];
-  for (int i = 0; i < 180; i++) light_buf[i] = i % 15;
+  static uint16_t light_buf[97];
+  for (int i = 0; i < 96; i++) light_buf[i] = (i % 2 ? 18 : 2);
+  light_buf[96] = 0;
 
   while (1) {
-    HAL_TIM_PWM_Start_DMA(&tim1, TIM_CHANNEL_3, (void *)light_buf, 180);
+    HAL_TIM_PWM_Start_DMA(&tim1, TIM_CHANNEL_3, (void *)light_buf, 97);
     ACT_ON(); HAL_Delay(1000);
     ACT_OFF(); HAL_Delay(1000);
   }
