@@ -127,8 +127,17 @@ int main()
   __HAL_TIM_ENABLE_DMA(&tim1, TIM_DMA_UPDATE);
 }
 
+  static uint32_t a[4] = {
+    0x082000,
+    0x140008,
+    0x000820,
+    0x101010,
+  };
   static uint16_t light_buf[97];
-  for (int i = 0; i < 96; i++) light_buf[i] = (i % 2 ? 18 : 2);
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 24; j++)
+      light_buf[i * 24 + j] = ((a[i] >> (23 - j)) & 1 ? 13 : 6);
+  }
   light_buf[96] = 0;
 
   HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_3);
