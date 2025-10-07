@@ -1,5 +1,6 @@
 #include "py32f0xx_hal.h"
 #include "py32f0xx_ll_rcc.h"
+#include "py32f0xx_ll_tim.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -117,9 +118,15 @@ int main()
     },
   };
   HAL_DMA_Init(&dma1_ch1);
-  HAL_DMA_ChannelMap(&dma1_ch1, DMA_CHANNEL_MAP_TIM1_CH3);
-  __HAL_LINKDMA(&tim1, hdma[TIM_DMA_ID_CC3], dma1_ch1);
+  HAL_DMA_ChannelMap(&dma1_ch1, DMA_CHANNEL_MAP_TIM1_UP);
+  __HAL_LINKDMA(&tim1, hdma[TIM_DMA_ID_UPDATE], dma1_ch1);
   __HAL_TIM_ENABLE_OCxPRELOAD(&tim1, TIM_CHANNEL_3);
+
+  // 15 = (TIM1->CCR3 - TIM1 base) / 4
+  TIM1->DCR = (0 << TIM_DCR_DBL_Pos) | (15 << TIM_DCR_DBA_Pos);
+  TIM1->DIER |= TIM_DIER_UDE;
+  __HAL_TIM_ENABLE_DMA(&tim1, TIM_DMA_UPDATE);
+
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 15, 1);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
@@ -128,8 +135,11 @@ int main()
   for (int i = 0; i < 96; i++) light_buf[i] = (i % 2 ? 18 : 2);
   light_buf[96] = 0;
 
+  HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_3);
+
   while (1) {
-    HAL_TIM_PWM_Start_DMA(&tim1, TIM_CHANNEL_3, (void *)light_buf, 97);
+    // HAL_TIM_PWM_Start_DMA(&tim1, TIM_CHANNEL_3, (void *)light_buf, 97);
+    HAL_DMA_Start_IT(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, 97);
     ACT_ON(); HAL_Delay(1000);
     ACT_OFF(); HAL_Delay(1000);
   }
