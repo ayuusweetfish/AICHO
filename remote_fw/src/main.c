@@ -28,6 +28,9 @@ static inline void delay_us(uint32_t us)
   spin_delay(us * 16);
 }
 
+static TIM_HandleTypeDef tim1;
+static DMA_HandleTypeDef dma1_ch1;
+
 #pragma GCC push_options
 #pragma GCC optimize("O3")
 int main()
@@ -84,7 +87,7 @@ int main()
   });
 
   __HAL_RCC_TIM1_CLK_ENABLE();
-  TIM_HandleTypeDef tim1 = {
+  tim1 = (TIM_HandleTypeDef){
     .Instance = TIM1,
     .Init = {
       .Prescaler = 1 - 1,   // 16 MHz
@@ -98,11 +101,33 @@ int main()
     .OCMode = TIM_OCMODE_PWM1,
     .OCPolarity = TIM_OCPOLARITY_HIGH,
   }, TIM_CHANNEL_3);
-  TIM1->CCR3 = 8;
-  HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_3);
+
+  __HAL_RCC_DMA_CLK_ENABLE();
+  // Reference manual speficies that all channels map to all peripherals
+  dma1_ch1 = (DMA_HandleTypeDef){
+    .Instance = DMA1_Channel1,
+    .Init = {
+      .Direction = DMA_MEMORY_TO_PERIPH,
+      .PeriphInc = DMA_PINC_DISABLE,
+      .MemInc = DMA_MINC_ENABLE,
+      .PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD,
+      .MemDataAlignment = DMA_MDATAALIGN_HALFWORD,
+      .Mode = DMA_NORMAL,
+      .Priority = DMA_PRIORITY_MEDIUM,
+    },
+  };
+  HAL_DMA_Init(&dma1_ch1);
+  HAL_DMA_ChannelMap(&dma1_ch1, DMA_CHANNEL_MAP_TIM1_CH3);
+  __HAL_LINKDMA(&tim1, hdma[TIM_DMA_ID_CC3], dma1_ch1);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 15, 1);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
+  static uint16_t light_buf[180];
+  for (int i = 0; i < 180; i++) light_buf[i] = i % 15;
+
   while (1) {
+    HAL_TIM_PWM_Start_DMA(&tim1, TIM_CHANNEL_3, (void *)light_buf, 180);
     ACT_ON(); HAL_Delay(1000);
     ACT_OFF(); HAL_Delay(1000);
   }
@@ -124,7 +149,10 @@ void RCC_IRQHandler() { while (1) { } }
 void EXTI0_1_IRQHandler() { while (1) { } }
 void EXTI2_3_IRQHandler() { while (1) { } }
 void EXTI4_15_IRQHandler() { while (1) { } }
-void DMA1_Channel1_IRQHandler() { while (1) { } }
+void DMA1_Channel1_IRQHandler()
+{
+  HAL_DMA_IRQHandler(&dma1_ch1);
+}
 void DMA1_Channel2_3_IRQHandler() { while (1) { } }
 void ADC_COMP_IRQHandler() { while (1) { } }
 void TIM1_BRK_UP_TRG_COM_IRQHandler() { while (1) { } }
