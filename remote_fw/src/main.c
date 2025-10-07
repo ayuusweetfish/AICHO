@@ -9,9 +9,9 @@
 #include "debug_printf.h"
 
 #define LED_WRITE_I(_i, _c) do { \
-  for (int i = 0; i < 8; i++) out[(_i) * 24 +  0 + i] = ((_c).g >> (7 - i)) & 1 ? 13 : 6; \
-  for (int i = 0; i < 8; i++) out[(_i) * 24 +  8 + i] = ((_c).r >> (7 - i)) & 1 ? 13 : 6; \
-  for (int i = 0; i < 8; i++) out[(_i) * 24 + 16 + i] = ((_c).b >> (7 - i)) & 1 ? 13 : 6; \
+  for (int _j = 0; _j < 8; _j++) out[(_i) * 24 +  0 + _j] = ((((_c).g >> (7 - _j)) & 1) ? 13 : 6); \
+  for (int _j = 0; _j < 8; _j++) out[(_i) * 24 +  8 + _j] = ((((_c).r >> (7 - _j)) & 1) ? 13 : 6); \
+  for (int _j = 0; _j < 8; _j++) out[(_i) * 24 + 16 + _j] = ((((_c).b >> (7 - _j)) & 1) ? 13 : 6); \
 } while (0)
 #include "leds.h"
 
@@ -136,30 +136,38 @@ int main()
   HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_3);
 }
 
-  void send_lights_raw(int n, const uint8_t light_buf[]) {
-    HAL_DMA_PollForTransfer(&dma1_ch1, HAL_DMA_FULL_TRANSFER, 0);
-    HAL_DMA_Start(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, n * 24 + 1);
+  void send_lights_raw(int n, uint8_t light_buf[]) {
+    light_buf[n * 24 + 1] = 0;
+    TIM1->DMAR = 0;
+    TIM1->CR1 &= ~TIM_CR1_CEN;
+    HAL_DMA_Start(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, n * 24 + 2);
+    TIM1->CR1 |= TIM_CR1_CEN;
   }
   void send_lights(int n, const uint32_t a[]) {
-    static uint8_t light_buf[24 * 8 + 1];
+    static uint8_t light_buf[24 * 8 + 2];
     if (n >= 8) n = 8;
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < 24; j++)
         light_buf[i * 24 + j] = ((a[i] >> (23 - j)) & 1 ? 13 : 6);
     }
-    light_buf[n * 24] = 0;
     send_lights_raw(n, light_buf);
   }
+  void wait_lights() {
+    HAL_DMA_PollForTransfer(&dma1_ch1, HAL_DMA_FULL_TRANSFER, HAL_MAX_DELAY);
+  }
 
+  static uint8_t a[64 * 24 + 2];
+  a[0] = 0;
   while (1) {
-    send_lights(4, (uint32_t []){
-      0x082000,
-      0x140008,
-      0x000820,
-      0x101010,
-    });
-    ACT_ON(); HAL_Delay(1000);
-    ACT_OFF(); HAL_Delay(1000);
+    ACT_ON();
+    for (int i = 0; i < 256; i++) {
+      wait_lights();
+      gradient_Lorivox(i * 16, a + 1);
+      __DSB();
+      send_lights_raw(LED_N_Lorivox, a);
+      HAL_Delay(2);
+    }
+    ACT_OFF();
   }
 }
 
