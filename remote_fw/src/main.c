@@ -73,6 +73,35 @@ int main()
   });
 }
 
+  // ============ Light strip ============ //
+  // PB6 AF1 = TIM1_CH3
+{
+  HAL_GPIO_Init(GPIOB, &(GPIO_InitTypeDef){
+    .Mode = GPIO_MODE_AF_PP,
+    .Pin = (1 << 6),
+    .Alternate = 1,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  });
+
+  __HAL_RCC_TIM1_CLK_ENABLE();
+  TIM_HandleTypeDef tim1 = {
+    .Instance = TIM1,
+    .Init = {
+      .Prescaler = 1 - 1,   // 16 MHz
+      .CounterMode = TIM_COUNTERMODE_UP,
+      .Period = 20 - 1,     // 800 kHz
+      .ClockDivision = TIM_CLOCKDIVISION_DIV1,
+    },
+  };
+  HAL_TIM_PWM_Init(&tim1);
+  HAL_TIM_PWM_ConfigChannel(&tim1, &(TIM_OC_InitTypeDef){
+    .OCMode = TIM_OCMODE_PWM1,
+    .OCPolarity = TIM_OCPOLARITY_HIGH,
+  }, TIM_CHANNEL_3);
+  TIM1->CCR3 = 8;
+  HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_3);
+}
+
   while (1) {
     ACT_ON(); HAL_Delay(1000);
     ACT_OFF(); HAL_Delay(1000);
