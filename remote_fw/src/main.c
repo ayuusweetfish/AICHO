@@ -122,13 +122,9 @@ int main()
   __HAL_LINKDMA(&tim1, hdma[TIM_DMA_ID_UPDATE], dma1_ch1);
   __HAL_TIM_ENABLE_OCxPRELOAD(&tim1, TIM_CHANNEL_3);
 
-  // 15 = (TIM1->CCR3 - TIM1 base) / 4
-  TIM1->DCR = (0 << TIM_DCR_DBL_Pos) | (15 << TIM_DCR_DBA_Pos);
-  TIM1->DIER |= TIM_DIER_UDE;
+  LL_TIM_ConfigDMABurst(TIM1, LL_TIM_DMABURST_BASEADDR_CCR3, LL_TIM_DMABURST_LENGTH_1TRANSFER);
+  LL_TIM_EnableDMAReq_UPDATE(TIM1);
   __HAL_TIM_ENABLE_DMA(&tim1, TIM_DMA_UPDATE);
-
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 15, 1);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
   static uint16_t light_buf[97];
@@ -138,8 +134,8 @@ int main()
   HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_3);
 
   while (1) {
-    // HAL_TIM_PWM_Start_DMA(&tim1, TIM_CHANNEL_3, (void *)light_buf, 97);
-    HAL_DMA_Start_IT(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, 97);
+    HAL_DMA_PollForTransfer(&dma1_ch1, HAL_DMA_FULL_TRANSFER, 0);
+    HAL_DMA_Start(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, 97);
     ACT_ON(); HAL_Delay(1000);
     ACT_OFF(); HAL_Delay(1000);
   }
@@ -161,10 +157,7 @@ void RCC_IRQHandler() { while (1) { } }
 void EXTI0_1_IRQHandler() { while (1) { } }
 void EXTI2_3_IRQHandler() { while (1) { } }
 void EXTI4_15_IRQHandler() { while (1) { } }
-void DMA1_Channel1_IRQHandler()
-{
-  HAL_DMA_IRQHandler(&dma1_ch1);
-}
+void DMA1_Channel1_IRQHandler() { while (1) { } }
 void DMA1_Channel2_3_IRQHandler() { while (1) { } }
 void ADC_COMP_IRQHandler() { while (1) { } }
 void TIM1_BRK_UP_TRG_COM_IRQHandler() { while (1) { } }
