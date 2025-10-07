@@ -29,9 +29,6 @@ static inline void delay_us(uint32_t us)
   spin_delay(us * 16);
 }
 
-static TIM_HandleTypeDef tim1;
-static DMA_HandleTypeDef dma1_ch1;
-
 #pragma GCC push_options
 #pragma GCC optimize("O3")
 int main()
@@ -77,6 +74,8 @@ int main()
   });
 }
 
+  static DMA_HandleTypeDef dma1_ch1;
+
   // ============ Light strip ============ //
   // PB6 AF1 = TIM1_CH3
 {
@@ -88,7 +87,7 @@ int main()
   });
 
   __HAL_RCC_TIM1_CLK_ENABLE();
-  tim1 = (TIM_HandleTypeDef){
+  TIM_HandleTypeDef tim1 = {
     .Instance = TIM1,
     .Init = {
       .Prescaler = 1 - 1,   // 16 MHz
@@ -125,26 +124,29 @@ int main()
   LL_TIM_ConfigDMABurst(TIM1, LL_TIM_DMABURST_BASEADDR_CCR3, LL_TIM_DMABURST_LENGTH_1TRANSFER);
   LL_TIM_EnableDMAReq_UPDATE(TIM1);
   __HAL_TIM_ENABLE_DMA(&tim1, TIM_DMA_UPDATE);
+
+  TIM1->CCR3 = 0;
+  HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_3);
 }
 
-  static uint32_t a[4] = {
-    0x082000,
-    0x140008,
-    0x000820,
-    0x101010,
-  };
-  static uint16_t light_buf[97];
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 24; j++)
-      light_buf[i * 24 + j] = ((a[i] >> (23 - j)) & 1 ? 13 : 6);
+  void send_lights(int n, const uint32_t a[]) {
+    static uint16_t light_buf[24 * 50 + 1];
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < 24; j++)
+        light_buf[i * 24 + j] = ((a[i] >> (23 - j)) & 1 ? 13 : 6);
+    }
+    light_buf[n * 24] = 0;
+    HAL_DMA_PollForTransfer(&dma1_ch1, HAL_DMA_FULL_TRANSFER, 0);
+    HAL_DMA_Start(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, n * 24 + 1);
   }
-  light_buf[96] = 0;
-
-  HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_3);
 
   while (1) {
-    HAL_DMA_PollForTransfer(&dma1_ch1, HAL_DMA_FULL_TRANSFER, 0);
-    HAL_DMA_Start(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, 97);
+    send_lights(4, (uint32_t []){
+      0x082000,
+      0x140008,
+      0x000820,
+      0x101010,
+    });
     ACT_ON(); HAL_Delay(1000);
     ACT_OFF(); HAL_Delay(1000);
   }
