@@ -156,7 +156,7 @@ int main()
     HAL_DMA_PollForTransfer(&dma1_ch1, HAL_DMA_FULL_TRANSFER, HAL_MAX_DELAY);
   }
 
-  static uint8_t a[64 * 24 + 1];
+  static uint8_t a[128 * 24 + 1];
   while (1) {
     ACT_ON();
     for (int i = 0; i < 256; i++) {
