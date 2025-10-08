@@ -137,14 +137,12 @@ int main()
 }
 
   void send_lights_raw(int n, uint8_t light_buf[]) {
-    light_buf[n * 24 + 1] = 0;
-    TIM1->DMAR = 0;
-    TIM1->CR1 &= ~TIM_CR1_CEN;
-    HAL_DMA_Start(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, n * 24 + 2);
-    TIM1->CR1 |= TIM_CR1_CEN;
+    light_buf[n * 24] = 0;
+    TIM1->CNT = 0;
+    HAL_DMA_Start(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, n * 24 + 1);
   }
   void send_lights(int n, const uint32_t a[]) {
-    static uint8_t light_buf[24 * 8 + 2];
+    static uint8_t light_buf[24 * 8 + 1];
     if (n >= 8) n = 8;
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < 24; j++)
@@ -156,13 +154,12 @@ int main()
     HAL_DMA_PollForTransfer(&dma1_ch1, HAL_DMA_FULL_TRANSFER, HAL_MAX_DELAY);
   }
 
-  static uint8_t a[64 * 24 + 2];
-  a[0] = 0;
+  static uint8_t a[64 * 24 + 1];
   while (1) {
     ACT_ON();
     for (int i = 0; i < 256; i++) {
       wait_lights();
-      gradient_Lorivox(i * 16, a + 1);
+      gradient_Lorivox(i * 16, a);
       __DSB();
       send_lights_raw(LED_N_Lorivox, a);
       HAL_Delay(2);
