@@ -138,8 +138,10 @@ int main()
 
   void send_lights_raw(int n, uint8_t light_buf[]) {
     light_buf[n * 24] = 0;
-    TIM1->CNT = 0;
+    TIM1->CR1 &= ~TIM_CR1_CEN;
+    TIM1->CNT = TIM1->ARR;  // XXX: 0 holds PWM output high?
     HAL_DMA_Start(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, n * 24 + 1);
+    TIM1->CR1 |= TIM_CR1_CEN;
   }
   void send_lights(int n, const uint32_t a[]) {
     static uint8_t light_buf[24 * 8 + 1];
