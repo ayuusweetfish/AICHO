@@ -139,7 +139,10 @@ int main()
   void send_lights_raw(int n, uint8_t light_buf[]) {
     light_buf[n * 24] = 0;
     TIM1->CR1 &= ~TIM_CR1_CEN;
-    TIM1->CNT = TIM1->ARR;  // XXX: 0 holds PWM output high?
+    TIM1->CNT = TIM1->ARR;
+      // 0 holds PWM output high during the time
+      // from when DMA starts and timer is re-enabled
+    __DMB();  // Data Memory Barrier
     HAL_DMA_Start(&dma1_ch1, (uint32_t)light_buf, (uint32_t)&TIM1->DMAR, n * 24 + 1);
     TIM1->CR1 |= TIM_CR1_CEN;
   }
@@ -162,7 +165,6 @@ int main()
     for (int i = 0; i < 256; i++) {
       wait_lights();
       gradient_Lorivox(i * 16, a);
-      __DSB();
       send_lights_raw(LED_N_Lorivox, a);
       HAL_Delay(2);
     }
