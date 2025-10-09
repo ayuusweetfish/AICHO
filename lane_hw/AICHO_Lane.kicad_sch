@@ -2915,6 +2915,89 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Mechanical:MountingHole"
+			(pin_names
+				(offset 1.016)
+			)
+			(exclude_from_sim no)
+			(in_bom no)
+			(on_board yes)
+			(property "Reference" "H"
+				(at 0 5.08 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "MountingHole"
+				(at 0 3.175 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Mounting Hole without connection"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "mounting hole"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "MountingHole*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "MountingHole_0_1"
+				(circle
+					(center 0 0)
+					(radius 1.27)
+					(stroke
+						(width 1.27)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "PY32F003:PY32F003F18U6TR"
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -4854,7 +4937,7 @@
 		(uuid "5bca977d-5956-482f-a9a3-ddabf552b979")
 	)
 	(junction
-		(at 213.36 31.75)
+		(at 232.41 31.75)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "7097b302-0df2-4e8e-85fb-86b5758dab76")
@@ -4902,7 +4985,7 @@
 		(uuid "96752f02-44f4-4535-b67b-9e00052d50c9")
 	)
 	(junction
-		(at 181.61 31.75)
+		(at 200.66 31.75)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "986bf474-77af-4890-9329-eff76e66d8dc")
@@ -5825,7 +5908,7 @@
 	)
 	(wire
 		(pts
-			(xy 181.61 31.75) (xy 189.23 31.75)
+			(xy 200.66 31.75) (xy 208.28 31.75)
 		)
 		(stroke
 			(width 0)
@@ -5955,7 +6038,7 @@
 	)
 	(wire
 		(pts
-			(xy 213.36 31.75) (xy 204.47 31.75)
+			(xy 232.41 31.75) (xy 223.52 31.75)
 		)
 		(stroke
 			(width 0)
@@ -6990,7 +7073,7 @@
 	)
 	(symbol
 		(lib_id "power:+5V")
-		(at 181.61 31.75 0)
+		(at 200.66 31.75 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -6998,7 +7081,7 @@
 		(dnp no)
 		(uuid "07d55044-a7d4-4302-a387-1824a458b633")
 		(property "Reference" "#PWR016"
-			(at 181.61 35.56 0)
+			(at 200.66 35.56 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7007,7 +7090,7 @@
 			)
 		)
 		(property "Value" "+5V"
-			(at 181.61 27.686 0)
+			(at 200.66 27.686 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7015,7 +7098,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 181.61 31.75 0)
+			(at 200.66 31.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7024,7 +7107,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 181.61 31.75 0)
+			(at 200.66 31.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7033,7 +7116,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+5V\""
-			(at 181.61 31.75 0)
+			(at 200.66 31.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7686,7 +7769,7 @@
 	(symbol
 		(lib_name "GND_1")
 		(lib_id "power:GND")
-		(at 196.85 39.37 0)
+		(at 215.9 39.37 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -7695,7 +7778,7 @@
 		(fields_autoplaced yes)
 		(uuid "1fb40bae-2b23-41bf-83c2-136384a10c55")
 		(property "Reference" "#PWR044"
-			(at 196.85 45.72 0)
+			(at 215.9 45.72 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7704,7 +7787,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 196.85 44.45 0)
+			(at 215.9 44.45 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7713,7 +7796,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 196.85 39.37 0)
+			(at 215.9 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7722,7 +7805,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 196.85 39.37 0)
+			(at 215.9 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7731,7 +7814,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 196.85 39.37 0)
+			(at 215.9 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8014,6 +8097,73 @@
 			(project "AICHO_Lane"
 				(path "/6c51c4e7-714d-4ba2-b183-a9bbda12c420"
 					(reference "#PWR028")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 168.91 39.37 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "24ff6fcf-b737-40f6-9ba0-39ab78602930")
+		(property "Reference" "#PWR074"
+			(at 168.91 45.72 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 168.91 44.45 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 168.91 39.37 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 168.91 39.37 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 168.91 39.37 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "802e8d99-1fc7-4a8c-8b20-cfe37d10ae41")
+		)
+		(instances
+			(project "AICHO_Lane"
+				(path "/6c51c4e7-714d-4ba2-b183-a9bbda12c420"
+					(reference "#PWR074")
 					(unit 1)
 				)
 			)
@@ -8690,7 +8840,7 @@
 	(symbol
 		(lib_name "GND_1")
 		(lib_id "power:GND")
-		(at 213.36 39.37 0)
+		(at 232.41 39.37 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -8699,7 +8849,7 @@
 		(fields_autoplaced yes)
 		(uuid "37340c91-7f45-451c-847b-04e7b88edc6e")
 		(property "Reference" "#PWR045"
-			(at 213.36 45.72 0)
+			(at 232.41 45.72 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8708,7 +8858,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 213.36 44.45 0)
+			(at 232.41 44.45 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8717,7 +8867,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 213.36 39.37 0)
+			(at 232.41 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8726,7 +8876,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 213.36 39.37 0)
+			(at 232.41 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8735,7 +8885,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 213.36 39.37 0)
+			(at 232.41 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9391,7 +9541,7 @@
 	)
 	(symbol
 		(lib_id "Regulator_Linear:XC6206PxxxMR")
-		(at 196.85 31.75 0)
+		(at 215.9 31.75 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -9400,7 +9550,7 @@
 		(fields_autoplaced yes)
 		(uuid "52148e63-ee3a-4dcc-9387-150f0aa6c39b")
 		(property "Reference" "U3"
-			(at 196.85 25.4 0)
+			(at 215.9 25.4 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9408,7 +9558,7 @@
 			)
 		)
 		(property "Value" "XC6206P332MR"
-			(at 196.85 27.94 0)
+			(at 215.9 27.94 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9416,7 +9566,7 @@
 			)
 		)
 		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-3"
-			(at 196.85 26.035 0)
+			(at 215.9 26.035 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9426,7 +9576,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.torexsemi.com/file/xc6206/XC6206.pdf"
-			(at 196.85 31.75 0)
+			(at 215.9 31.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9435,7 +9585,7 @@
 			)
 		)
 		(property "Description" "Positive 60-250mA Low Dropout Regulator, Fixed Output, SOT-23"
-			(at 196.85 31.75 0)
+			(at 215.9 31.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9444,7 +9594,7 @@
 			)
 		)
 		(property "LCSC PN" "C5446"
-			(at 196.85 31.75 0)
+			(at 215.9 31.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9804,6 +9954,69 @@
 			(project "AICHO_Lane"
 				(path "/6c51c4e7-714d-4ba2-b183-a9bbda12c420"
 					(reference "#PWR052")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Mechanical:MountingHole")
+		(at 271.78 21.59 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "6059be7b-b379-4f14-a56c-e9ee6c8515d5")
+		(property "Reference" "H3"
+			(at 271.78 18.034 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "MountingHole"
+			(at 274.32 22.8599 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2"
+			(at 271.78 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 271.78 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Mounting Hole without connection"
+			(at 271.78 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(instances
+			(project "AICHO_Lane"
+				(path "/6c51c4e7-714d-4ba2-b183-a9bbda12c420"
+					(reference "H3")
 					(unit 1)
 				)
 			)
@@ -10540,7 +10753,7 @@
 	)
 	(symbol
 		(lib_id "power:+3V3")
-		(at 213.36 31.75 0)
+		(at 232.41 31.75 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -10548,7 +10761,7 @@
 		(dnp no)
 		(uuid "75b38f37-26e5-4014-ab5d-b7c7b4179e45")
 		(property "Reference" "#PWR029"
-			(at 213.36 35.56 0)
+			(at 232.41 35.56 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10557,7 +10770,7 @@
 			)
 		)
 		(property "Value" "+3V3"
-			(at 213.36 27.432 0)
+			(at 232.41 27.432 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10565,7 +10778,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 213.36 31.75 0)
+			(at 232.41 31.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10574,7 +10787,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 213.36 31.75 0)
+			(at 232.41 31.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10583,7 +10796,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+3V3\""
-			(at 213.36 31.75 0)
+			(at 232.41 31.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12566,7 +12779,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 213.36 35.56 0)
+		(at 232.41 35.56 0)
 		(mirror y)
 		(unit 1)
 		(exclude_from_sim no)
@@ -12575,7 +12788,7 @@
 		(dnp no)
 		(uuid "a5401c74-d9fe-4d13-97d1-47e0d657e6aa")
 		(property "Reference" "C32"
-			(at 210.312 34.29 0)
+			(at 229.362 34.29 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12584,7 +12797,7 @@
 			)
 		)
 		(property "Value" "1u"
-			(at 210.312 36.83 0)
+			(at 229.362 36.83 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12593,7 +12806,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
-			(at 212.3948 39.37 0)
+			(at 231.4448 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12602,7 +12815,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 213.36 35.56 0)
+			(at 232.41 35.56 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12611,7 +12824,7 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
-			(at 213.36 35.56 0)
+			(at 232.41 35.56 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12702,7 +12915,7 @@
 	(symbol
 		(lib_name "GND_1")
 		(lib_id "power:GND")
-		(at 181.61 39.37 0)
+		(at 200.66 39.37 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -12711,7 +12924,7 @@
 		(fields_autoplaced yes)
 		(uuid "a898f02d-5282-4bff-9f9c-a19b29624452")
 		(property "Reference" "#PWR035"
-			(at 181.61 45.72 0)
+			(at 200.66 45.72 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12720,7 +12933,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 181.61 44.45 0)
+			(at 200.66 44.45 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12729,7 +12942,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 181.61 39.37 0)
+			(at 200.66 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12738,7 +12951,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 181.61 39.37 0)
+			(at 200.66 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12747,7 +12960,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 181.61 39.37 0)
+			(at 200.66 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13233,7 +13446,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 181.61 35.56 0)
+		(at 200.66 35.56 0)
 		(mirror y)
 		(unit 1)
 		(exclude_from_sim no)
@@ -13242,7 +13455,7 @@
 		(dnp no)
 		(uuid "b3d2c340-dc7d-4d9e-8464-c645bae85cd6")
 		(property "Reference" "C31"
-			(at 178.562 34.29 0)
+			(at 197.612 34.29 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13251,7 +13464,7 @@
 			)
 		)
 		(property "Value" "1u"
-			(at 178.562 36.83 0)
+			(at 197.612 36.83 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13260,7 +13473,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
-			(at 180.6448 39.37 0)
+			(at 199.6948 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13269,7 +13482,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 181.61 35.56 0)
+			(at 200.66 35.56 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13278,7 +13491,7 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
-			(at 181.61 35.56 0)
+			(at 200.66 35.56 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13788,6 +14001,69 @@
 			(project "AICHO_Lane"
 				(path "/6c51c4e7-714d-4ba2-b183-a9bbda12c420"
 					(reference "#PWR066")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Mechanical:MountingHole")
+		(at 262.89 21.59 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "c67a6572-71e8-4da1-bccc-0e6f95d0e3e8")
+		(property "Reference" "H2"
+			(at 262.89 18.034 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "MountingHole"
+			(at 265.43 22.8599 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2"
+			(at 262.89 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 262.89 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Mounting Hole without connection"
+			(at 262.89 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(instances
+			(project "AICHO_Lane"
+				(path "/6c51c4e7-714d-4ba2-b183-a9bbda12c420"
+					(reference "H2")
 					(unit 1)
 				)
 			)
@@ -14413,6 +14689,69 @@
 			(project "AICHO_Lane"
 				(path "/6c51c4e7-714d-4ba2-b183-a9bbda12c420"
 					(reference "R45")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Mechanical:MountingHole")
+		(at 254 21.59 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "d32b0a61-8593-4381-8dc5-cf0f22187c49")
+		(property "Reference" "H1"
+			(at 254 18.034 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "MountingHole"
+			(at 256.54 22.8599 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2"
+			(at 254 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 254 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Mounting Hole without connection"
+			(at 254 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(instances
+			(project ""
+				(path "/6c51c4e7-714d-4ba2-b183-a9bbda12c420"
+					(reference "H1")
 					(unit 1)
 				)
 			)
@@ -15308,6 +15647,94 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:C_Polarized")
+		(at 168.91 35.56 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "de4ff05e-469f-45b9-8933-8f6ceb41d023")
+		(property "Reference" "C18"
+			(at 172.72 33.4009 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "220u 25V"
+			(at 172.72 35.9409 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:CP_Elec_6.3x7.7"
+			(at 169.8752 39.37 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 168.91 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Polarized capacitor"
+			(at 168.91 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN" "C696188"
+			(at 168.91 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Mfr PN" "RVT1E221M0607"
+			(at 168.91 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "d6d24bb5-e043-4cb8-aa8f-51b6f3c17f77")
+		)
+		(pin "2"
+			(uuid "77613b94-a316-4da8-b545-ffff4f4bfe77")
+		)
+		(instances
+			(project "AICHO_Lane"
+				(path "/6c51c4e7-714d-4ba2-b183-a9bbda12c420"
+					(reference "C18")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 29.21 45.72 0)
 		(unit 1)
@@ -15516,6 +15943,71 @@
 			(project "AICHO_Lane"
 				(path "/6c51c4e7-714d-4ba2-b183-a9bbda12c420"
 					(reference "J43")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+5V")
+		(at 168.91 31.75 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "e768b466-e42f-4b61-937c-5cd48925ef38")
+		(property "Reference" "#PWR034"
+			(at 168.91 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+5V"
+			(at 168.91 27.686 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 168.91 31.75 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 168.91 31.75 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+5V\""
+			(at 168.91 31.75 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "c447b82a-1903-45ef-9d02-7105ee41721a")
+		)
+		(instances
+			(project "AICHO_Lane"
+				(path "/6c51c4e7-714d-4ba2-b183-a9bbda12c420"
+					(reference "#PWR034")
 					(unit 1)
 				)
 			)
