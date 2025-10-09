@@ -5000,16 +5000,16 @@
 		(uuid "5a322fd4-fd87-49d1-9b53-00de9324427d")
 	)
 	(no_connect
+		(at 123.19 124.46)
+		(uuid "6edcedbb-22f3-425e-8efe-4ea0e27f9435")
+	)
+	(no_connect
 		(at 78.74 34.29)
 		(uuid "7e40a514-5621-4ccc-9ed1-d04a115cc663")
 	)
 	(no_connect
 		(at 78.74 63.5)
 		(uuid "851726a2-b4e7-4d48-a004-a9f11d8ae250")
-	)
-	(no_connect
-		(at 132.08 113.03)
-		(uuid "ae417e6d-7970-4152-9e41-9c5288aa058d")
 	)
 	(no_connect
 		(at 120.65 121.92)
@@ -5355,6 +5355,16 @@
 	)
 	(wire
 		(pts
+			(xy 115.57 90.17) (xy 115.57 93.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "35d35842-3049-4a97-89f2-36b6cc4c45d9")
+	)
+	(wire
+		(pts
 			(xy 147.32 107.95) (xy 156.21 107.95)
 		)
 		(stroke
@@ -5362,6 +5372,16 @@
 			(type default)
 		)
 		(uuid "37728dee-2836-48da-8528-7a2ba29bb64b")
+	)
+	(wire
+		(pts
+			(xy 123.19 121.92) (xy 123.19 124.46)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3807d7a6-5d2b-4c23-960e-1a7c7bb98e86")
 	)
 	(wire
 		(pts
@@ -5615,7 +5635,7 @@
 	)
 	(wire
 		(pts
-			(xy 118.11 88.9) (xy 118.11 93.98)
+			(xy 120.65 91.44) (xy 120.65 93.98)
 		)
 		(stroke
 			(width 0)
@@ -5885,16 +5905,6 @@
 	)
 	(wire
 		(pts
-			(xy 123.19 121.92) (xy 123.19 124.46)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "bbd43dae-fa55-4ea9-b678-3e01dc19316b")
-	)
-	(wire
-		(pts
 			(xy 217.17 71.12) (xy 220.98 71.12)
 		)
 		(stroke
@@ -5992,16 +6002,6 @@
 			(type default)
 		)
 		(uuid "c9e0397e-4be8-41a2-addf-a963d86b75cf")
-	)
-	(wire
-		(pts
-			(xy 120.65 91.44) (xy 120.65 93.98)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ce81f0f8-282f-4066-b075-0cb5898b0694")
 	)
 	(wire
 		(pts
@@ -6115,7 +6115,7 @@
 	)
 	(wire
 		(pts
-			(xy 115.57 86.36) (xy 115.57 93.98)
+			(xy 118.11 88.9) (xy 118.11 93.98)
 		)
 		(stroke
 			(width 0)
@@ -6253,8 +6253,8 @@
 		)
 		(uuid "09be716f-338d-496a-979e-eac66966f6d0")
 	)
-	(label "PUMP_1"
-		(at 115.57 86.36 0)
+	(label "PUMP_3"
+		(at 118.11 88.9 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6284,12 +6284,12 @@
 		(uuid "31f91a08-ad85-4508-89ff-1fdd62bd6732")
 	)
 	(label "UART1_TX"
-		(at 123.19 124.46 0)
+		(at 104.14 107.95 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "335226cd-c407-43ee-9dc4-0165ef0c0886")
 	)
@@ -6324,7 +6324,7 @@
 		(uuid "7273c456-fb95-4c75-85e2-d3cbffe76950")
 	)
 	(label "PUMP_2"
-		(at 118.11 88.9 0)
+		(at 120.65 91.44 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6364,7 +6364,7 @@
 		(uuid "79c9c282-07a0-4cf9-b7ba-26f93c2ed081")
 	)
 	(label "ACT_LED"
-		(at 123.19 93.98 0)
+		(at 132.08 113.03 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6383,8 +6383,8 @@
 		)
 		(uuid "821a4c41-f3bb-48e3-92a2-00ec4ec8f3e0")
 	)
-	(label "PUMP_3"
-		(at 120.65 91.44 0)
+	(label "PUMP_1"
+		(at 123.19 93.98 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6454,7 +6454,7 @@
 		(uuid "c5013e80-f180-419e-b083-08407aa51404")
 	)
 	(label "PRESSURE_SENSOR"
-		(at 104.14 107.95 180)
+		(at 115.57 90.17 180)
 		(effects
 			(font
 				(size 1.27 1.27)
