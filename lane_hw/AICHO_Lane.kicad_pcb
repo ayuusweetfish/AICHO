@@ -13596,7 +13596,7 @@
 				)
 			)
 		)
-		(property "LCSC PN" "C51940124"
+		(property "LCSC PN" "C7433648"
 			(at 0 0 180)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -16222,7 +16222,7 @@
 				)
 			)
 		)
-		(property "LCSC PN" "C51940124"
+		(property "LCSC PN" "C7433648"
 			(at 0 0 180)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -17247,7 +17247,7 @@
 				)
 			)
 		)
-		(property "LCSC PN" "C51940124"
+		(property "LCSC PN" "C7433648"
 			(at 0 0 180)
 			(unlocked yes)
 			(layer "F.Fab")
@@ -20855,7 +20855,7 @@
 			)
 		)
 	)
-	(gr_text "ayu.land/aicho?id=L3_xx"
+	(gr_text "ayu.land/aicho?id=R3_Lxx"
 		(at 74.5 58.5 0)
 		(layer "Cmts.User")
 		(uuid "dd89eca7-55bf-4952-afa0-341140d82b96")

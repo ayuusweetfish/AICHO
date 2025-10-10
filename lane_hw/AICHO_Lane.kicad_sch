@@ -8958,7 +8958,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN" "C51940124"
+		(property "LCSC PN" "C7433648"
 			(at 232.41 57.15 0)
 			(effects
 				(font
@@ -10298,6 +10298,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN" "C7433649"
+			(at 33.02 102.87 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "MP"
 			(uuid "0f562e0b-ec74-47c6-a9a6-9e77e8425488")
 		)
@@ -10523,7 +10532,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN" "C51940124"
+		(property "LCSC PN" "C7433648"
 			(at 232.41 96.52 0)
 			(effects
 				(font
@@ -15921,7 +15930,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN" "C51940124"
+		(property "LCSC PN" "C7433648"
 			(at 232.41 135.89 0)
 			(effects
 				(font
