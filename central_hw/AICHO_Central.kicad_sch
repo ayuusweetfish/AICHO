@@ -2619,23 +2619,27 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Mechanical:MountingHole"
+		(symbol "Mechanical:MountingHole_Pad"
+			(pin_numbers
+				(hide yes)
+			)
 			(pin_names
 				(offset 1.016)
+				(hide yes)
 			)
 			(exclude_from_sim no)
 			(in_bom no)
 			(on_board yes)
 			(property "Reference" "H"
-				(at 0 5.08 0)
+				(at 0 6.35 0)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
 				)
 			)
-			(property "Value" "MountingHole"
-				(at 0 3.175 0)
+			(property "Value" "MountingHole_Pad"
+				(at 0 4.445 0)
 				(effects
 					(font
 						(size 1.27 1.27)
@@ -2660,7 +2664,7 @@
 					(hide yes)
 				)
 			)
-			(property "Description" "Mounting Hole without connection"
+			(property "Description" "Mounting Hole with connection"
 				(at 0 0 0)
 				(effects
 					(font
@@ -2678,7 +2682,7 @@
 					(hide yes)
 				)
 			)
-			(property "ki_fp_filters" "MountingHole*"
+			(property "ki_fp_filters" "MountingHole*Pad*"
 				(at 0 0 0)
 				(effects
 					(font
@@ -2687,9 +2691,9 @@
 					(hide yes)
 				)
 			)
-			(symbol "MountingHole_0_1"
+			(symbol "MountingHole_Pad_0_1"
 				(circle
-					(center 0 0)
+					(center 0 1.27)
 					(radius 1.27)
 					(stroke
 						(width 1.27)
@@ -2697,6 +2701,26 @@
 					)
 					(fill
 						(type none)
+					)
+				)
+			)
+			(symbol "MountingHole_Pad_1_1"
+				(pin input line
+					(at 0 -2.54 90)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
 					)
 				)
 			)
@@ -6358,8 +6382,8 @@
 		)
 	)
 	(symbol
-		(lib_id "Mechanical:MountingHole")
-		(at 45.72 139.7 0)
+		(lib_id "Mechanical:MountingHole_Pad")
+		(at 45.72 140.97 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -6375,7 +6399,7 @@
 			)
 		)
 		(property "Value" "MountingHole"
-			(at 48.26 140.9699 0)
+			(at 48.26 142.2399 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6385,7 +6409,7 @@
 			)
 		)
 		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_Pad_Via"
-			(at 45.72 139.7 0)
+			(at 45.72 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6394,7 +6418,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 45.72 139.7 0)
+			(at 45.72 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6402,14 +6426,17 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Mounting Hole without connection"
-			(at 45.72 139.7 0)
+		(property "Description" "Mounting Hole with connection"
+			(at 45.72 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 				(hide yes)
 			)
+		)
+		(pin "1"
+			(uuid "70fd8849-2043-43a0-9759-1c6a21606289")
 		)
 		(instances
 			(project "AICHO_Central"
@@ -8942,8 +8969,8 @@
 		)
 	)
 	(symbol
-		(lib_id "Mechanical:MountingHole")
-		(at 54.61 139.7 0)
+		(lib_id "Mechanical:MountingHole_Pad")
+		(at 54.61 140.97 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -8959,7 +8986,7 @@
 			)
 		)
 		(property "Value" "MountingHole"
-			(at 57.15 140.9699 0)
+			(at 57.15 142.2399 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8969,7 +8996,7 @@
 			)
 		)
 		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_Pad_Via"
-			(at 54.61 139.7 0)
+			(at 54.61 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8978,7 +9005,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 54.61 139.7 0)
+			(at 54.61 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8986,14 +9013,17 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Mounting Hole without connection"
-			(at 54.61 139.7 0)
+		(property "Description" "Mounting Hole with connection"
+			(at 54.61 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 				(hide yes)
 			)
+		)
+		(pin "1"
+			(uuid "1a56210c-6ae0-440b-8978-356bb625e024")
 		)
 		(instances
 			(project "AICHO_Central"
@@ -9350,6 +9380,140 @@
 	)
 	(symbol
 		(lib_id "power:GND")
+		(at 27.94 143.51 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "c315f38a-acf7-4e62-92b5-5bab3f254013")
+		(property "Reference" "#PWR038"
+			(at 27.94 149.86 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 27.94 148.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 27.94 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 27.94 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 27.94 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "c2c83a51-62dc-4f99-9cb9-31961ac8270e")
+		)
+		(instances
+			(project "AICHO_Central"
+				(path "/cebfd9de-48c0-4c0c-a674-9a5de52f20de"
+					(reference "#PWR038")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 54.61 143.51 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "c5401f9b-b664-44ec-b58c-51582c6f50d5")
+		(property "Reference" "#PWR041"
+			(at 54.61 149.86 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 54.61 148.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 54.61 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 54.61 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 54.61 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "48a49ac2-cbf8-4025-8490-f9d726ce154d")
+		)
+		(instances
+			(project "AICHO_Central"
+				(path "/cebfd9de-48c0-4c0c-a674-9a5de52f20de"
+					(reference "#PWR041")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
 		(at 261.62 123.19 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -9416,8 +9580,8 @@
 		)
 	)
 	(symbol
-		(lib_id "Mechanical:MountingHole")
-		(at 36.83 139.7 0)
+		(lib_id "Mechanical:MountingHole_Pad")
+		(at 36.83 140.97 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -9433,7 +9597,7 @@
 			)
 		)
 		(property "Value" "MountingHole"
-			(at 39.37 140.9699 0)
+			(at 39.37 142.2399 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9443,7 +9607,7 @@
 			)
 		)
 		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_Pad_Via"
-			(at 36.83 139.7 0)
+			(at 36.83 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9452,7 +9616,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 36.83 139.7 0)
+			(at 36.83 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9460,14 +9624,17 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Mounting Hole without connection"
-			(at 36.83 139.7 0)
+		(property "Description" "Mounting Hole with connection"
+			(at 36.83 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 				(hide yes)
 			)
+		)
+		(pin "1"
+			(uuid "8476990a-2c18-4476-adac-72e271111dae")
 		)
 		(instances
 			(project "AICHO_Central"
@@ -9862,8 +10029,75 @@
 		)
 	)
 	(symbol
-		(lib_id "Mechanical:MountingHole")
-		(at 27.94 139.7 0)
+		(lib_id "power:GND")
+		(at 36.83 143.51 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "d238dbf9-6600-4dd4-bc8c-64dd0a40145c")
+		(property "Reference" "#PWR039"
+			(at 36.83 149.86 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 36.83 148.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 36.83 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 36.83 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 36.83 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "63bb3744-19a9-4012-a7d2-6c96f443e870")
+		)
+		(instances
+			(project "AICHO_Central"
+				(path "/cebfd9de-48c0-4c0c-a674-9a5de52f20de"
+					(reference "#PWR039")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Mechanical:MountingHole_Pad")
+		(at 27.94 140.97 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -9879,7 +10113,7 @@
 			)
 		)
 		(property "Value" "MountingHole"
-			(at 30.48 140.9699 0)
+			(at 30.48 142.2399 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9889,7 +10123,7 @@
 			)
 		)
 		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_Pad_Via"
-			(at 27.94 139.7 0)
+			(at 27.94 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9898,7 +10132,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 27.94 139.7 0)
+			(at 27.94 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9906,14 +10140,17 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Mounting Hole without connection"
-			(at 27.94 139.7 0)
+		(property "Description" "Mounting Hole with connection"
+			(at 27.94 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 				(hide yes)
 			)
+		)
+		(pin "1"
+			(uuid "c3a97ff7-06bc-4120-a98a-25fa8bdcd819")
 		)
 		(instances
 			(project "AICHO_Central"
@@ -10722,6 +10959,73 @@
 			(project "AICHO_Central"
 				(path "/cebfd9de-48c0-4c0c-a674-9a5de52f20de"
 					(reference "R34")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 45.72 143.51 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f692a86b-3099-4c4a-aa8c-f6e3511a2a2c")
+		(property "Reference" "#PWR040"
+			(at 45.72 149.86 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 45.72 148.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 45.72 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 45.72 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 45.72 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "7e855d3c-180e-4f6e-9a19-2c314eda0819")
+		)
+		(instances
+			(project "AICHO_Central"
+				(path "/cebfd9de-48c0-4c0c-a674-9a5de52f20de"
+					(reference "#PWR040")
 					(unit 1)
 				)
 			)
