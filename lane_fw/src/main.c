@@ -72,9 +72,74 @@ int main()
   });
 }
 
+  // ============ Pumps ============ //
+  // PUMP_1 (Drain)   = PA0 AF13 = TIM1_CH3
+  // PUMP_2 (Inflate) = PA1 AF13 = TIM1_CH4
+  // PUMP_3 (Valve)   = PA2 AF13 = TIM3_CH1
+{
+  HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
+    .Mode = GPIO_MODE_AF_PP,
+    .Pin = (1 << 0) | (1 << 1) | (1 << 2),
+    .Alternate = 13,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  });
+}
+{
+  __HAL_RCC_TIM1_CLK_ENABLE();
+  TIM_HandleTypeDef tim1 = {
+    .Instance = TIM1,
+    .Init = {
+      .Prescaler = 1 - 1,   // 16 MHz
+      .CounterMode = TIM_COUNTERMODE_UP,
+      .Period = 200 - 1,    // 80 kHz
+      .ClockDivision = TIM_CLOCKDIVISION_DIV1,
+    },
+  };
+  HAL_TIM_PWM_Init(&tim1);
+
+  HAL_TIM_PWM_ConfigChannel(&tim1, &(TIM_OC_InitTypeDef){
+    .OCMode = TIM_OCMODE_PWM1,
+    .OCPolarity = TIM_OCPOLARITY_HIGH,
+  }, TIM_CHANNEL_3);
+  HAL_TIM_PWM_ConfigChannel(&tim1, &(TIM_OC_InitTypeDef){
+    .OCMode = TIM_OCMODE_PWM1,
+    .OCPolarity = TIM_OCPOLARITY_HIGH,
+  }, TIM_CHANNEL_4);
+  TIM1->CCR3 = 0;
+  TIM1->CCR4 = 0;
+  HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_4);
+}
+{
+  __HAL_RCC_TIM3_CLK_ENABLE();
+  TIM_HandleTypeDef tim3 = {
+    .Instance = TIM3,
+    .Init = {
+      .Prescaler = 1 - 1,   // 16 MHz
+      .CounterMode = TIM_COUNTERMODE_UP,
+      .Period = 200 - 1,    // 80 kHz
+      .ClockDivision = TIM_CLOCKDIVISION_DIV1,
+    },
+  };
+  HAL_TIM_PWM_Init(&tim3);
+
+  HAL_TIM_PWM_ConfigChannel(&tim3, &(TIM_OC_InitTypeDef){
+    .OCMode = TIM_OCMODE_PWM1,
+    .OCPolarity = TIM_OCPOLARITY_HIGH,
+  }, TIM_CHANNEL_1);
+  TIM3->CCR1 = 100;
+  HAL_TIM_PWM_Start(&tim3, TIM_CHANNEL_1);
+}
+
   while (1) {
-    ACT_ON(); delay_us(1000000);
-    ACT_OFF(); delay_us(1000000);
+    ACT_ON(); TIM1->CCR3 = 100;
+    delay_us(200000);
+    ACT_OFF(); TIM1->CCR4 = TIM3->CCR1 = 0;
+    delay_us(1300000);
+    ACT_ON(); TIM1->CCR4 = TIM3->CCR1 = 100;
+    delay_us(1000000);
+    ACT_OFF(); TIM1->CCR4 = TIM3->CCR1 = 0;
+    delay_us(1500000);
   }
 }
 
