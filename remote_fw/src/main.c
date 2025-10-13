@@ -36,6 +36,11 @@ static inline void delay_us(uint32_t us)
   spin_delay(us * 16);
 }
 
+static UART_HandleTypeDef uart2;
+static DMA_HandleTypeDef dma1_ch2;
+static uint8_t serial_rx_buf[64];
+static inline void serial_tx(const uint8_t *buf, uint8_t len);
+
 #pragma GCC push_options
 #pragma GCC optimize("O3")
 int main()
@@ -159,9 +164,71 @@ int main()
     HAL_DMA_PollForTransfer(&dma1_ch1, HAL_DMA_FULL_TRANSFER, HAL_MAX_DELAY);
   }
 
+  // ============ RS-485 driver enable signal ============ //
+  HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
+  HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
+    .Mode = GPIO_MODE_OUTPUT_PP,
+    .Pin = (1 << 6),
+    .Pull = GPIO_NOPULL,
+    .Speed = GPIO_SPEED_FREQ_LOW,
+  });
+
+  // ============ UART ============ //
+  // PA4 AF9 = UART2_TX
+  // PA5 AF9 = UART2_RX
+{
+  HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
+    .Mode = GPIO_MODE_AF_PP,
+    .Pin = (1 << 4) | (1 << 5),
+    .Pull = GPIO_NOPULL,
+    .Alternate = 9,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  });
+  __HAL_RCC_USART2_CLK_ENABLE();
+  uart2 = (UART_HandleTypeDef){
+    .Instance = USART2,
+    .Init = (UART_InitTypeDef){
+      .BaudRate = 115200,
+      .WordLength = UART_WORDLENGTH_8B,
+      .StopBits = UART_STOPBITS_1,
+      .Parity = UART_PARITY_NONE,
+      .Mode = UART_MODE_TX_RX,
+      .HwFlowCtl = UART_HWCONTROL_NONE,
+      .OverSampling = UART_OVERSAMPLING_16,
+    },
+  };
+  HAL_UART_Init(&uart2);
+  HAL_NVIC_SetPriority(USART2_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(USART2_IRQn);
+
+  dma1_ch2 = (DMA_HandleTypeDef){
+    .Instance = DMA1_Channel2,
+    .Init = {
+      .Direction = DMA_PERIPH_TO_MEMORY,
+      .PeriphInc = DMA_PINC_DISABLE,
+      .MemInc = DMA_MINC_ENABLE,
+      .PeriphDataAlignment = DMA_PDATAALIGN_BYTE,
+      .MemDataAlignment = DMA_MDATAALIGN_BYTE,
+      .Mode = DMA_CIRCULAR,
+      .Priority = DMA_PRIORITY_MEDIUM,
+    },
+  };
+  HAL_DMA_Init(&dma1_ch2);
+  HAL_DMA_ChannelMap(&dma1_ch2, DMA_CHANNEL_MAP_USART2_RX);
+  __HAL_LINKDMA(&uart2, hdmarx, dma1_ch2);
+
+  __HAL_UART_ENABLE_IT(&uart2, UART_IT_RXNE);
+  USART2->CR3 |= USART_CR3_DMAR;
+  DMA1_Channel2->CNDTR = sizeof serial_rx_buf;
+  DMA1_Channel2->CPAR = (uint32_t)&USART2->DR;
+  DMA1_Channel2->CMAR = (uint32_t)serial_rx_buf;
+  DMA1_Channel2->CCR |= DMA_CCR_EN;
+}
+
   static uint8_t a[128 * 24 + 1];
   while (1) {
     ACT_ON();
+    serial_tx((void *)"Hello\r\n", 7);
     for (int i = 0; i < 256; i++) {
       wait_lights();
       gradient_Lorivox(i * 16, a);
@@ -170,6 +237,24 @@ int main()
     }
     ACT_OFF();
   }
+}
+
+static inline void serial_tx(const uint8_t *buf, uint8_t len)
+{
+  HAL_GPIO_WritePin(GPIOA, (1 << 6), 1);
+  __NOP();
+  HAL_UART_Transmit(&uart2, (uint8_t *)buf, len, HAL_MAX_DELAY);
+  __NOP();
+  HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
+}
+
+static inline void serial_rx_process_byte(uint8_t x)
+{
+  serial_tx((const uint8_t []){ x, x + 1 }, 2);
+  spin_delay(200);
+  static char s[64];
+  int l = snprintf(s, sizeof s, "[%d]", (int)x);
+  serial_tx((const uint8_t *)s, l);
 }
 
 void NMI_Handler() { while (1) { } }
@@ -201,4 +286,14 @@ void TIM17_IRQHandler() { while (1) { } }
 void I2C1_IRQHandler() { while (1) { } }
 void SPI1_IRQHandler() { while (1) { } }
 void USART1_IRQHandler() { while (1) { } }
-void USART2_IRQHandler() { while (1) { } }
+
+#pragma GCC push_options
+#pragma GCC optimize("O3")
+void USART2_IRQHandler()
+{
+  uint32_t n = sizeof serial_rx_buf - DMA1_Channel2->CNDTR;
+  static uint32_t i = 0;
+  for (; i != n; i = (i + 1) % sizeof serial_rx_buf)
+    serial_rx_process_byte(serial_rx_buf[i]);
+}
+#pragma GCC pop_options
