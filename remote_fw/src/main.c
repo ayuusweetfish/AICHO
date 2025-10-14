@@ -37,8 +37,6 @@ static inline void delay_us(uint32_t us)
 }
 
 static UART_HandleTypeDef uart2;
-static DMA_HandleTypeDef dma1_ch2;
-static uint8_t serial_rx_buf[64];
 static inline void serial_tx(const uint8_t *buf, uint8_t len);
 
 static volatile uint8_t lights_type = 3;
@@ -204,28 +202,9 @@ int main()
   HAL_NVIC_SetPriority(USART2_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(USART2_IRQn);
 
-  dma1_ch2 = (DMA_HandleTypeDef){
-    .Instance = DMA1_Channel2,
-    .Init = {
-      .Direction = DMA_PERIPH_TO_MEMORY,
-      .PeriphInc = DMA_PINC_DISABLE,
-      .MemInc = DMA_MINC_ENABLE,
-      .PeriphDataAlignment = DMA_PDATAALIGN_BYTE,
-      .MemDataAlignment = DMA_MDATAALIGN_BYTE,
-      .Mode = DMA_CIRCULAR,
-      .Priority = DMA_PRIORITY_MEDIUM,
-    },
-  };
-  HAL_DMA_Init(&dma1_ch2);
-  HAL_DMA_ChannelMap(&dma1_ch2, DMA_CHANNEL_MAP_USART2_RX);
-  __HAL_LINKDMA(&uart2, hdmarx, dma1_ch2);
+  USART2->CR1 |= USART_CR1_RXNEIE;
+  USART2->CR1 |= USART_CR1_UE;
 
-  __HAL_UART_ENABLE_IT(&uart2, UART_IT_RXNE);
-  USART2->CR3 |= USART_CR3_DMAR;
-  DMA1_Channel2->CNDTR = sizeof serial_rx_buf;
-  DMA1_Channel2->CPAR = (uint32_t)&USART2->DR;
-  DMA1_Channel2->CMAR = (uint32_t)serial_rx_buf;
-  DMA1_Channel2->CCR |= DMA_CCR_EN;
 }
 
   static uint8_t a[128 * 24 + 1];
@@ -347,9 +326,7 @@ void USART1_IRQHandler() { while (1) { } }
 #pragma GCC optimize("O3")
 void USART2_IRQHandler()
 {
-  uint32_t n = sizeof serial_rx_buf - DMA1_Channel2->CNDTR;
-  static uint32_t i = 0;
-  for (; i != n; i = (i + 1) % sizeof serial_rx_buf)
-    serial_rx_process_byte(serial_rx_buf[i]);
+  uint8_t x = USART2->DR;
+  serial_rx_process_byte(x);
 }
 #pragma GCC pop_options

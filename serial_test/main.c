@@ -8,8 +8,33 @@ int serial_close(int fd);
 int serial_read(int fd, uint8_t *buf, size_t buf_size);
 int serial_write(int fd, const uint8_t *buf, size_t buf_size);
 
+#include <assert.h>
 #include <stdio.h>
 #include <unistd.h>
+
+static inline void tx(int fd, const uint8_t *buf, uint8_t len)
+{
+  int n_tx = serial_write(fd, buf, len);
+  assert(n_tx == len);
+
+/*
+  uint32_t s = crc32_bulk(buf, len);
+  uint8_t s8[4] = {
+    (uint8_t)(s >>  0),
+    (uint8_t)(s >>  8),
+    (uint8_t)(s >> 16),
+    (uint8_t)(s >> 24),
+  };
+*/
+
+  printf("> [%2u]", (unsigned)len);
+  for (int i = 0; i < len; i++) printf(" %02x", (unsigned)buf[i]);
+/*
+  printf(" |");
+  for (int i = 0; i < 4; i++) printf(" %02x", (unsigned)s8[i]);
+*/
+  putchar('\n');
+}
 
 int main(int argc, char *argv[])
 {
@@ -21,13 +46,15 @@ int main(int argc, char *argv[])
   int fd = serial_open(argv[1]);
 
   while (1) {
-    puts("!");
-    serial_write(fd, (uint8_t []){0x01, 0x01, 0x00, 0xAA}, 4);
-    usleep(1000000);
+    static uint32_t l = 0;
+    l = (l + 32) % 4096;
+    printf("intensity = %u\n", l);
+    tx(fd, (uint8_t []){0x01, l >> 8, l & 0xFF, 0xAA}, 4);
+    usleep(20000);
 
     uint8_t a[64];
     int n = serial_read(fd, a, sizeof a);
-    printf("[%2d]", n);
+    printf("< [%2d]", n);
     for (int i = 0; i < n; i++) printf(" %02x", (int)a[i]);
     printf("\n");
   }
