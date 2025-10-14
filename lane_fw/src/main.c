@@ -132,13 +132,13 @@ int main()
 }
 
   while (1) {
-    ACT_ON(); TIM1->CCR3 = 100;
-    delay_us(200000);
-    ACT_OFF(); TIM1->CCR4 = TIM3->CCR1 = 0;
-    delay_us(1300000);
-    ACT_ON(); TIM1->CCR4 = TIM3->CCR1 = 100;
+    ACT_ON(); TIM1->CCR4 = 150;
+    delay_us(500000);
+    ACT_OFF(); TIM1->CCR4 = 0;
     delay_us(1000000);
-    ACT_OFF(); TIM1->CCR4 = TIM3->CCR1 = 0;
+    ACT_ON(); TIM1->CCR3 = 150; TIM3->CCR1 = 200;
+    delay_us(1000000);
+    ACT_OFF(); TIM1->CCR3 = TIM3->CCR1 = 0;
     delay_us(1500000);
   }
 }
