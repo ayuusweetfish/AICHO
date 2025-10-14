@@ -17,21 +17,22 @@ int serial_write(int fd, const uint8_t *buf, size_t buf_size);
 static inline void tx(int fd, const uint8_t *buf, uint8_t len)
 {
   uint32_t s = crc32_bulk(buf, len);
-  uint8_t s8[5] = {
+  uint8_t s8[4] = {
     (uint8_t)(s >>  0),
     (uint8_t)(s >>  8),
     (uint8_t)(s >> 16),
     (uint8_t)(s >> 24),
-    0xAA,
   };
 
-  int n_tx;
-
-  n_tx = serial_write(fd, buf, len);
-  assert(n_tx == len);
-
-  n_tx = serial_write(fd, s8, 5);
-  assert(n_tx == 5);
+  for (int i = 0; i < len + 4; i++) {
+    uint8_t x = (i < len ? buf[i] : s8[i - len]);
+    if (x == 0xAA || x == 0x55) {
+      assert(serial_write(fd, (uint8_t []){0x55, x ^ 0xF0}, 2) == 2);
+    } else {
+      assert(serial_write(fd, (uint8_t []){x}, 1) == 1);
+    }
+  }
+  assert(serial_write(fd, (uint8_t []){0xAA}, 1) == 1);
 
   printf("> [%2u]", (unsigned)len);
   for (int i = 0; i < len; i++) printf(" %02x", (unsigned)buf[i]);
