@@ -160,36 +160,35 @@ int main()
     .Rank = ADC_RANK_CHANNEL_NUMBER,
     .SamplingTime = ADC_SAMPLETIME_41CYCLES_5,  // Obsolete
   });
-if (0)
-  HAL_ADC_ConfigChannel(&adc1, &(ADC_ChannelConfTypeDef){
-    .Channel = ADC_CHANNEL_VREFINT,
-    .Rank = ADC_RANK_CHANNEL_NUMBER,
-    .SamplingTime = ADC_SAMPLETIME_41CYCLES_5,  // Obsolete
-  });
 }
 
+  // TODO: Optimize this with DMA/interrupt
   uint32_t read_adc() {
-    HAL_ADC_Start(&adc1);
-    HAL_ADC_PollForConversion(&adc1, HAL_MAX_DELAY);
-    uint32_t adc_value = HAL_ADC_GetValue(&adc1);
-  if (0) {
-    HAL_ADC_PollForConversion(&adc1, HAL_MAX_DELAY);
-    uint32_t adc_value_refint = HAL_ADC_GetValue(&adc1);
-  }
-    HAL_ADC_Stop(&adc1);
-    // printf("ADC %u %u\n", (unsigned)adc_value_refint, (unsigned)adc_value);
-    return (adc_value * 33000 + 2048) / 4096; // Unit: 0.1 mV
-  }
-
-  while (0) {
-    printf("ADC %u\n", (unsigned)read_adc());
-    HAL_Delay(1000);
+    // Median filter; take central two quartiles
+    // In experiments, this achieves +/- 20 mV consistently with the pumps and valves running
+    static uint32_t v[12];
+    for (int i = 0; i < 12; i++) {
+      HAL_ADC_Start(&adc1);
+      HAL_ADC_PollForConversion(&adc1, HAL_MAX_DELAY);
+      uint32_t adc_value = HAL_ADC_GetValue(&adc1);
+      // if (i % 2 == 1) printf("%4d ", (unsigned)adc_value);
+      v[i] = adc_value;
+      HAL_ADC_Stop(&adc1);
+    }
+    for (int i = 0; i < 12; i++)
+      for (int j = i; j < 12; j++)
+        if (v[i] > v[j]) { uint32_t t = v[i]; v[i] = v[j]; v[j] = t; }
+    for (int i = 0; i < 12; i++)
+      if (i % 2 == 0) printf("%4d ", (unsigned)v[i]);
+    uint32_t sum = 0;
+    for (int i = 3; i < 9; i++) sum += v[i];
+    return (sum * 5500 + 2048) / 4096;  // Unit: 0.1 mV
   }
 
   void delay(int n) {
     for (int i = 0; i < n; i++) {
       delay_us(100000);
-      printf("ADC %u\n", (unsigned)read_adc());
+      printf("ADC %5u\n", (unsigned)read_adc());
     }
   }
   while (1) {
