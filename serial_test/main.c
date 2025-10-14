@@ -12,27 +12,31 @@ int serial_write(int fd, const uint8_t *buf, size_t buf_size);
 #include <stdio.h>
 #include <unistd.h>
 
+#include "crc32.h"
+
 static inline void tx(int fd, const uint8_t *buf, uint8_t len)
 {
-  int n_tx = serial_write(fd, buf, len);
-  assert(n_tx == len);
-
-/*
   uint32_t s = crc32_bulk(buf, len);
-  uint8_t s8[4] = {
+  uint8_t s8[5] = {
     (uint8_t)(s >>  0),
     (uint8_t)(s >>  8),
     (uint8_t)(s >> 16),
     (uint8_t)(s >> 24),
+    0xAA,
   };
-*/
+
+  int n_tx;
+
+  n_tx = serial_write(fd, buf, len);
+  assert(n_tx == len);
+
+  n_tx = serial_write(fd, s8, 5);
+  assert(n_tx == 5);
 
   printf("> [%2u]", (unsigned)len);
   for (int i = 0; i < len; i++) printf(" %02x", (unsigned)buf[i]);
-/*
   printf(" |");
-  for (int i = 0; i < 4; i++) printf(" %02x", (unsigned)s8[i]);
-*/
+  for (int i = 0; i < 5; i++) printf(" %02x", (unsigned)s8[i]);
   putchar('\n');
 }
 
@@ -49,7 +53,7 @@ int main(int argc, char *argv[])
     static uint32_t l = 0;
     l = (l + 32) % 4096;
     printf("intensity = %u\n", l);
-    tx(fd, (uint8_t []){0x01, l >> 8, l & 0xFF, 0xAA}, 4);
+    tx(fd, (uint8_t []){0x01, l >> 8, l & 0xFF}, 3);
     usleep(20000);
 
     uint8_t a[64];

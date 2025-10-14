@@ -8,6 +8,8 @@
 // #define RELEASE
 #include "debug_printf.h"
 
+#include "crc32.h"
+
 #define LED_WRITE_I(_i, _c) do { \
   for (int _j = 0; _j < 8; _j++) out[(_i) * 24 +  0 + _j] = ((((_c).g >> (7 - _j)) & 1) ? 13 : 6); \
   for (int _j = 0; _j < 8; _j++) out[(_i) * 24 +  8 + _j] = ((((_c).r >> (7 - _j)) & 1) ? 13 : 6); \
@@ -250,6 +252,8 @@ static inline void serial_tx(const uint8_t *buf, uint8_t len)
 
 static inline void serial_rx_process_packet(uint8_t *packet, uint8_t n)
 {
+  if (crc32_bulk(packet, n) != 0x2144DF1C) return;
+
   if (n >= 5 && packet[0] == 0x02) {
     lights_type = packet[0];
     lights_intensity = ((uint16_t)packet[1] << 8) | packet[2];
