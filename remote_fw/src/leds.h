@@ -77,7 +77,7 @@ void gradient_Lorivox(int intensity, uint8_t out[])
     CHSV yellow = (CHSV){30, 255, 255};
     CHSV green = (CHSV){72, 255, 255};
     CHSV blended = CHSV_blend(green, yellow, progress * 255);
-    if (i < 10) blended.v = (int32_t)blended.v * (i * 24) / 255;
+    if (i < 10) blended.v = (int32_t)blended.v * ((i + 1) * 24) / 255;
     blended.v = (int32_t)blended.v * intensity / 4096 / 2;
     CRGB c = CHSV_to_CRGB(blended);
     c.r = (c.r >= 8 || c.r < c.g ? c.r : c.g);
