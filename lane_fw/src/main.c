@@ -133,6 +133,7 @@ int main()
 
   // ============ Pressure sensor ============ //
   // PA3 = ADC_IN3
+  static ADC_HandleTypeDef adc1;
 {
   HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
     .Mode = GPIO_MODE_ANALOG,
@@ -140,48 +141,66 @@ int main()
   });
 
   __HAL_RCC_ADC_CLK_ENABLE();
-  ADC_HandleTypeDef adc1 = (ADC_HandleTypeDef){
+  adc1 = (ADC_HandleTypeDef){
     .Instance = ADC1,
     .Init = {
-      .ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2,
+      .ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2, // APB/2 = 8 MHz
       .Resolution = ADC_RESOLUTION_12B,
       .DataAlign = ADC_DATAALIGN_RIGHT,
       .ScanConvMode = ADC_SCAN_DIRECTION_FORWARD,
       .EOCSelection = ADC_EOC_SINGLE_CONV,
-      .SamplingTimeCommon = ADC_SAMPLETIME_239CYCLES_5,
+      .SamplingTimeCommon = ADC_SAMPLETIME_41CYCLES_5,
     },
   };
   HAL_ADC_Init(&adc1);
   HAL_ADC_Calibration_Start(&adc1);
+
   HAL_ADC_ConfigChannel(&adc1, &(ADC_ChannelConfTypeDef){
     .Channel = ADC_CHANNEL_3,
     .Rank = ADC_RANK_CHANNEL_NUMBER,
-    .SamplingTime = ADC_SAMPLETIME_239CYCLES_5, // Obsolete
+    .SamplingTime = ADC_SAMPLETIME_41CYCLES_5,  // Obsolete
   });
+if (0)
+  HAL_ADC_ConfigChannel(&adc1, &(ADC_ChannelConfTypeDef){
+    .Channel = ADC_CHANNEL_VREFINT,
+    .Rank = ADC_RANK_CHANNEL_NUMBER,
+    .SamplingTime = ADC_SAMPLETIME_41CYCLES_5,  // Obsolete
+  });
+}
 
   uint32_t read_adc() {
     HAL_ADC_Start(&adc1);
     HAL_ADC_PollForConversion(&adc1, HAL_MAX_DELAY);
     uint32_t adc_value = HAL_ADC_GetValue(&adc1);
+  if (0) {
+    HAL_ADC_PollForConversion(&adc1, HAL_MAX_DELAY);
+    uint32_t adc_value_refint = HAL_ADC_GetValue(&adc1);
+  }
     HAL_ADC_Stop(&adc1);
-    return adc_value;
+    // printf("ADC %u %u\n", (unsigned)adc_value_refint, (unsigned)adc_value);
+    return (adc_value * 33000 + 2048) / 4096; // Unit: 0.1 mV
   }
 
-  while (1) {
+  while (0) {
     printf("ADC %u\n", (unsigned)read_adc());
     HAL_Delay(1000);
   }
-}
 
+  void delay(int n) {
+    for (int i = 0; i < n; i++) {
+      delay_us(100000);
+      printf("ADC %u\n", (unsigned)read_adc());
+    }
+  }
   while (1) {
     ACT_ON(); TIM1->CCR4 = 150;
-    delay_us(500000);
+    delay(5);
     ACT_OFF(); TIM1->CCR4 = 0;
-    delay_us(1000000);
+    delay(10);
     ACT_ON(); TIM1->CCR3 = 150; TIM3->CCR1 = 200;
-    delay_us(1000000);
+    delay(10);
     ACT_OFF(); TIM1->CCR3 = TIM3->CCR1 = 0;
-    delay_us(1500000);
+    delay(15);
   }
 }
 
