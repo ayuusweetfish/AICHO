@@ -280,7 +280,7 @@ static inline void serial_rx_process_packet(uint8_t *packet, uint8_t n)
     lights_intensity = ((uint16_t)packet[1] << 8) | packet[2];
   }
   static char s[64];
-  int l = snprintf(s, sizeof s, "ok");
+  int l = snprintf(s, sizeof s, "ok %d", n);
   serial_tx((const uint8_t *)s, l);
 }
 
@@ -296,9 +296,11 @@ static inline void serial_rx_process_byte(uint8_t x)
     is_in_escape = false;
     ptr = 0;
   }
+  last_timestamp = t;
 
   if (is_in_escape) {
     if (ptr < sizeof packet) packet[ptr++] = x ^ 0xF0;
+    is_in_escape = false;
   } else {
     if (x == 0xAA) {
       serial_rx_process_packet(packet, ptr);
