@@ -38,7 +38,6 @@ static inline void delay_us(uint32_t us)
   spin_delay(us * 16);
 }
 
-static UART_HandleTypeDef uart2;
 static inline void serial_tx(const uint8_t *buf, uint8_t len);
 
 static volatile uint8_t lights_type = 3;
@@ -188,7 +187,7 @@ int main()
     .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
   });
   __HAL_RCC_USART2_CLK_ENABLE();
-  uart2 = (UART_HandleTypeDef){
+  UART_HandleTypeDef uart2 = (UART_HandleTypeDef){
     .Instance = USART2,
     .Init = (UART_InitTypeDef){
       .BaudRate = 115200,
@@ -241,10 +240,14 @@ int main()
   }
 }
 
+static inline void serial_tx_byte(uint8_t x)
+{
+  while (!(USART2->SR & USART_SR_TXE)) { }
+  USART2->DR = x;
+}
+
 static inline void serial_tx(const uint8_t *buf, uint8_t len)
 {
-  HAL_GPIO_WritePin(GPIOA, (1 << 6), 1);
-  __DMB();
   uint32_t s = crc32_bulk(buf, len);
   uint8_t s8[4] = {
     (uint8_t)(s >>  0),
@@ -252,15 +255,20 @@ static inline void serial_tx(const uint8_t *buf, uint8_t len)
     (uint8_t)(s >> 16),
     (uint8_t)(s >> 24),
   };
+
+  HAL_GPIO_WritePin(GPIOA, (1 << 6), 1);
+  __DMB();
   for (int i = 0; i < len + 4; i++) {
     uint8_t x = (i < len ? buf[i] : s8[i - len]);
     if (x == 0xAA || x == 0x55) {
-      HAL_UART_Transmit(&uart2, (uint8_t []){0x55, x ^ 0xF0}, 2, HAL_MAX_DELAY);
+      serial_tx_byte(0x55);
+      serial_tx_byte(x ^ 0xF0);
     } else {
-      HAL_UART_Transmit(&uart2, (uint8_t []){x}, 1, HAL_MAX_DELAY);
+      serial_tx_byte(x);
     }
   }
-  HAL_UART_Transmit(&uart2, (uint8_t []){0xAA}, 1, HAL_MAX_DELAY);
+  serial_tx_byte(0xAA);
+  while (!(USART2->SR & USART_SR_TC)) { }
   __DMB();
   HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
 }
@@ -277,9 +285,7 @@ static inline void serial_rx_process_packet(uint8_t *packet, uint8_t n)
     lights_type = packet[0];
     lights_intensity = ((uint16_t)packet[1] << 8) | packet[2];
   }
-  static char s[64];
-  int l = snprintf(s, sizeof s, "ok %d%c", n, HAL_GetTick() % 256);
-  serial_tx((const uint8_t *)s, l);
+  serial_tx((uint8_t []){0xAC, lights_type}, 2);
 }
 
 static inline void serial_rx_process_byte(uint8_t x)
