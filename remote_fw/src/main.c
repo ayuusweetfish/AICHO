@@ -41,6 +41,9 @@ static DMA_HandleTypeDef dma1_ch2;
 static uint8_t serial_rx_buf[64];
 static inline void serial_tx(const uint8_t *buf, uint8_t len);
 
+static volatile uint8_t lights_type = 3;
+static volatile uint16_t lights_intensity = 512, lights_progress = 0;
+
 #pragma GCC push_options
 #pragma GCC optimize("O3")
 int main()
@@ -228,14 +231,32 @@ int main()
   static uint8_t a[128 * 24 + 1];
   while (1) {
     ACT_ON();
-    serial_tx((void *)"Hello\r\n", 7);
-    for (int i = 0; i < 256; i++) {
-      wait_lights();
-      gradient_Lorivox(i * 16, a);
+    wait_lights();
+    __disable_irq();
+    uint8_t t = lights_type;
+    uint16_t l = lights_intensity;
+    uint16_t p = lights_progress;
+    __enable_irq();
+    switch (t) {
+    case 1:
+      gradient_Lorivox(l, a);
       send_lights_raw(LED_N_Lorivox, a);
-      HAL_Delay(2);
+      break;
+    case 2:
+      gradient_Lumisonic(l, p, a);
+      send_lights_raw(LED_N_Lumisonic, a);
+      break;
+    case 3:
+      gradient_Harmonia(l, a);
+      send_lights_raw(LED_N_Harmonia, a);
+      break;
+    case 4:
+      gradient_Titanus(l, a);
+      send_lights_raw(LED_N_Titanus, a);
+      break;
+    default:
     }
-    ACT_OFF();
+    HAL_Delay(2);
   }
 }
 
@@ -248,13 +269,46 @@ static inline void serial_tx(const uint8_t *buf, uint8_t len)
   HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
 }
 
+static inline void serial_rx_process_packet(uint8_t *packet, uint8_t n)
+{
+  if (n >= 5 && packet[0] == 0x02) {
+    lights_type = packet[0];
+    lights_intensity = ((uint16_t)packet[1] << 8) | packet[2];
+    lights_progress = ((uint16_t)packet[3] << 8) | packet[4];
+  } else if (n >= 3 && (packet[0] == 0x01 || packet[0] == 0x03 || packet[0] == 0x04)) {
+    lights_type = packet[0];
+    lights_intensity = ((uint16_t)packet[1] << 8) | packet[2];
+  }
+  static char s[64];
+  int l = snprintf(s, sizeof s, "ok");
+  serial_tx((const uint8_t *)s, l);
+}
+
 static inline void serial_rx_process_byte(uint8_t x)
 {
-  serial_tx((const uint8_t []){ x, x + 1 }, 2);
-  spin_delay(200);
-  static char s[64];
-  int l = snprintf(s, sizeof s, "[%d]", (int)x);
-  serial_tx((const uint8_t *)s, l);
+  static bool is_in_escape = false;
+  static uint8_t packet[16], ptr = 0;
+
+  static uint32_t last_timestamp = (uint32_t)-100;
+  uint32_t t = HAL_GetTick();
+  if (t - last_timestamp >= 100) {
+    // Reset
+    is_in_escape = false;
+    ptr = 0;
+  }
+
+  if (is_in_escape) {
+    if (ptr < sizeof packet) packet[ptr++] = x ^ 0xF0;
+  } else {
+    if (x == 0xAA) {
+      serial_rx_process_packet(packet, ptr);
+      ptr = 0;
+    } else if (x == 0x55) {
+      is_in_escape = true;
+    } else {
+      if (ptr < sizeof packet) packet[ptr++] = x;
+    }
+  }
 }
 
 void NMI_Handler() { while (1) { } }
