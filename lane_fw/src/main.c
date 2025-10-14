@@ -127,8 +127,50 @@ int main()
     .OCMode = TIM_OCMODE_PWM1,
     .OCPolarity = TIM_OCPOLARITY_HIGH,
   }, TIM_CHANNEL_1);
-  TIM3->CCR1 = 100;
+  TIM3->CCR1 = 0;
   HAL_TIM_PWM_Start(&tim3, TIM_CHANNEL_1);
+}
+
+  // ============ Pressure sensor ============ //
+  // PA3 = ADC_IN3
+{
+  HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
+    .Mode = GPIO_MODE_ANALOG,
+    .Pin = (1 << 3),
+  });
+
+  __HAL_RCC_ADC_CLK_ENABLE();
+  ADC_HandleTypeDef adc1 = (ADC_HandleTypeDef){
+    .Instance = ADC1,
+    .Init = {
+      .ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2,
+      .Resolution = ADC_RESOLUTION_12B,
+      .DataAlign = ADC_DATAALIGN_RIGHT,
+      .ScanConvMode = ADC_SCAN_DIRECTION_FORWARD,
+      .EOCSelection = ADC_EOC_SINGLE_CONV,
+      .SamplingTimeCommon = ADC_SAMPLETIME_239CYCLES_5,
+    },
+  };
+  HAL_ADC_Init(&adc1);
+  HAL_ADC_Calibration_Start(&adc1);
+  HAL_ADC_ConfigChannel(&adc1, &(ADC_ChannelConfTypeDef){
+    .Channel = ADC_CHANNEL_3,
+    .Rank = ADC_RANK_CHANNEL_NUMBER,
+    .SamplingTime = ADC_SAMPLETIME_239CYCLES_5, // Obsolete
+  });
+
+  uint32_t read_adc() {
+    HAL_ADC_Start(&adc1);
+    HAL_ADC_PollForConversion(&adc1, HAL_MAX_DELAY);
+    uint32_t adc_value = HAL_ADC_GetValue(&adc1);
+    HAL_ADC_Stop(&adc1);
+    return adc_value;
+  }
+
+  while (1) {
+    printf("ADC %u\n", (unsigned)read_adc());
+    HAL_Delay(1000);
+  }
 }
 
   while (1) {
