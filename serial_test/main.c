@@ -37,7 +37,7 @@ static inline void tx(int fd, const uint8_t *buf, uint8_t len)
   printf("> [%2u]", (unsigned)len);
   for (int i = 0; i < len; i++) printf(" %02x", (unsigned)buf[i]);
   printf(" |");
-  for (int i = 0; i < 5; i++) printf(" %02x", (unsigned)s8[i]);
+  for (int i = 0; i < 4; i++) printf(" %02x", (unsigned)s8[i]);
   putchar('\n');
 }
 
