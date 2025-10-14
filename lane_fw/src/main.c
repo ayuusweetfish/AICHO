@@ -6,6 +6,8 @@
 // #define RELEASE
 #include "debug_printf.h"
 
+#include "crc32.h"
+
 static void spin_delay(uint32_t cycles)
 {
   __asm__ volatile (
@@ -26,6 +28,8 @@ static inline void delay_us(uint32_t us)
 {
   spin_delay(us * 16);
 }
+
+static inline void serial_tx(const uint8_t *buf, uint8_t len);
 
 #pragma GCC push_options
 #pragma GCC optimize("O3")
@@ -185,6 +189,38 @@ int main()
     return (sum * 5500 + 2048) / 4096;  // Unit: 0.1 mV
   }
 
+  // ============ RS-485 UART ============ //
+  // PA4 AF9 = UART2_TX
+  // PA5 AF9 = UART2_RX
+{
+  HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
+    .Mode = GPIO_MODE_AF_PP,
+    .Pin = (1 << 4) | (1 << 5),
+    .Pull = GPIO_NOPULL,
+    .Alternate = 9,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  });
+  __HAL_RCC_USART2_CLK_ENABLE();
+  UART_HandleTypeDef uart2 = (UART_HandleTypeDef){
+    .Instance = USART2,
+    .Init = (UART_InitTypeDef){
+      .BaudRate = 115200,
+      .WordLength = UART_WORDLENGTH_8B,
+      .StopBits = UART_STOPBITS_1,
+      .Parity = UART_PARITY_NONE,
+      .Mode = UART_MODE_TX_RX,
+      .HwFlowCtl = UART_HWCONTROL_NONE,
+      .OverSampling = UART_OVERSAMPLING_16,
+    },
+  };
+  HAL_UART_Init(&uart2);
+  HAL_NVIC_SetPriority(USART2_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(USART2_IRQn);
+
+  USART2->CR1 |= USART_CR1_RXNEIE;
+  USART2->CR1 |= USART_CR1_UE;
+}
+
   void delay(int n) {
     for (int i = 0; i < n; i++) {
       delay_us(100000);
@@ -200,6 +236,74 @@ int main()
     delay(10);
     ACT_OFF(); TIM1->CCR3 = TIM3->CCR1 = 0;
     delay(15);
+  }
+}
+
+static inline void serial_tx_byte(uint8_t x)
+{
+  while (!(USART2->SR & USART_SR_TXE)) { }
+  USART2->DR = x;
+}
+
+static inline void serial_tx(const uint8_t *buf, uint8_t len)
+{
+  uint32_t s = crc32_bulk(buf, len);
+  uint8_t s8[4] = {
+    (uint8_t)(s >>  0),
+    (uint8_t)(s >>  8),
+    (uint8_t)(s >> 16),
+    (uint8_t)(s >> 24),
+  };
+
+  HAL_GPIO_WritePin(GPIOA, (1 << 6), 1);
+  __DMB();
+  for (int i = 0; i < len + 4; i++) {
+    uint8_t x = (i < len ? buf[i] : s8[i - len]);
+    if (x == 0xAA || x == 0x55) {
+      serial_tx_byte(0x55);
+      serial_tx_byte(x ^ 0xF0);
+    } else {
+      serial_tx_byte(x);
+    }
+  }
+  serial_tx_byte(0xAA);
+  while (!(USART2->SR & USART_SR_TC)) { }
+  __DMB();
+  HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
+}
+
+static inline void serial_rx_process_packet(uint8_t *packet, uint8_t n)
+{
+  if (crc32_bulk(packet, n) != 0x2144DF1C) return;
+  printf("ok %d\n", (int)n);
+}
+
+static inline void serial_rx_process_byte(uint8_t x)
+{
+  static bool is_in_escape = false;
+  static uint8_t packet[16], ptr = 0;
+
+  static uint32_t last_timestamp = (uint32_t)-100;
+  uint32_t t = HAL_GetTick();
+  if (t - last_timestamp >= 100) {
+    // Reset
+    is_in_escape = false;
+    ptr = 0;
+  }
+  last_timestamp = t;
+
+  if (is_in_escape) {
+    if (ptr < sizeof packet) packet[ptr++] = x ^ 0xF0;
+    is_in_escape = false;
+  } else {
+    if (x == 0xAA) {
+      serial_rx_process_packet(packet, ptr);
+      ptr = 0;
+    } else if (x == 0x55) {
+      is_in_escape = true;
+    } else {
+      if (ptr < sizeof packet) packet[ptr++] = x;
+    }
   }
 }
 
@@ -232,4 +336,12 @@ void TIM17_IRQHandler() { while (1) { } }
 void I2C1_IRQHandler() { while (1) { } }
 void SPI1_IRQHandler() { while (1) { } }
 void USART1_IRQHandler() { while (1) { } }
-void USART2_IRQHandler() { while (1) { } }
+
+#pragma GCC push_options
+#pragma GCC optimize("O3")
+void USART2_IRQHandler()
+{
+  uint8_t x = USART2->DR;
+  serial_rx_process_byte(x);
+}
+#pragma GCC pop_options
