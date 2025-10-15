@@ -221,6 +221,15 @@ int main()
   USART2->CR1 |= USART_CR1_UE;
 }
 
+  ACT_ON();
+  while (1) {
+    for (int i = 0; i < 256; i++) {
+      uint16_t l = i * 16;
+      serial_tx((uint8_t []){0x01, l >> 8, l & 0xff}, 3);
+      delay_us(10000);
+    }
+  }
+
 if (0) {
   TIM1->CCR3 = 200; TIM3->CCR1 = 200;
   HAL_Delay(1000);
