@@ -1,8 +1,8 @@
 // gcc -O2 -DMINIAUDIO_IMPLEMENTATION -c -x c miniaudio.h
 // make -C kissfft KISSFFT_DATATYPE=int32_t KISSFFT_STATIC=1
-// gcc -std=c99 capture.c miniaudio.o -Ikissfft kissfft/libkissfft-int32_t.a
+// gcc -std=c99 capture.c miniaudio.o -Ikissfft kissfft/libkissfft-int32_t.a -lm
 
-#include "miniaudio.h"  // miniaudio - v0.11.21 (4a5b74b)
+#include "miniaudio.h"
 
 #include "breath_detector.h"
 

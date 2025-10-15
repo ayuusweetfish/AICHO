@@ -6,6 +6,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifndef M_PI
+#define M_PI 3.141592653589793
+#endif
+
 #define BREATH_DET_WINDOW_SIZE 2048
 struct breath_detector {
   int32_t buf[BREATH_DET_WINDOW_SIZE];
