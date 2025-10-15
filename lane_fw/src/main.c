@@ -189,6 +189,15 @@ int main()
     return (sum * 4125 / 4 /* * 33000 / 32 */ + 2048) / 4096;  // Unit: 0.1 mV
   }
 
+  // ============ RS-485 driver enable signal ============ //
+  HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
+  HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
+    .Mode = GPIO_MODE_OUTPUT_PP,
+    .Pin = (1 << 6),
+    .Pull = GPIO_NOPULL,
+    .Speed = GPIO_SPEED_FREQ_LOW,
+  });
+
   // ============ RS-485 UART ============ //
   // PA4 AF9 = UART2_TX
   // PA5 AF9 = UART2_RX
