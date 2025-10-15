@@ -231,7 +231,7 @@ int main()
 }
 
   ACT_ON();
-  while (1) {
+  while (0) {
     for (int i = 0; i < 256; i++) {
       uint16_t l = i * 16;
       serial_tx((uint8_t []){0x01, l >> 8, l & 0xff}, 3);
@@ -273,6 +273,16 @@ if (0) {
     while (read_adc() > reading && HAL_GetTick() - t0 < 5000) { }
     TIM1->CCR3 = TIM3->CCR1 = 0;
   }
+
+  while (1) {
+    drain(500);
+    for (int i = 6000; i <= 8500; i += 200) {
+      inflate(i);
+      HAL_Delay(1000);
+      printf("%5d %5d\n", i, (int)read_adc());
+    }
+  }
+
   drain(500);
   while (1) {
     ACT_ON(); inflate(8500); ACT_OFF();
