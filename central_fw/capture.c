@@ -18,7 +18,7 @@ void input_cb(ma_device* dev, void *_output, const void *_input, ma_uint32 n_fra
   (void)_output;
 }
 
-int main_capture()
+int main_capture(const char *device_name)
 {
   ma_context ctx;
   if (ma_context_init(NULL, 0, NULL, &ctx) != MA_SUCCESS) {
@@ -33,7 +33,7 @@ int main_capture()
   const ma_device_id *sel_id = NULL;
   for (int i = 0; i < n_in_devs; i++) {
     printf("Device: %s\n", in_dev_infos[i].name);
-    if (strstr(in_dev_infos[i].name, "MC001"))
+    if (device_name != NULL && strstr(in_dev_infos[i].name, device_name))
       sel_id = &in_dev_infos[i].id;
   }
 
@@ -95,8 +95,11 @@ int main_file(const char *path)
 
 int main(int argc, char *argv[])
 {
-  if (argc > 1) {
-    return main_file(argv[1]);
+  if (argc >= 3 && strcmp(argv[1], "-f") == 0) {
+    return main_file(argv[2]);
   }
-  return main_capture();
+  if (argc >= 2) {
+    return main_capture(argv[1]);
+  }
+  return main_capture(NULL);
 }
