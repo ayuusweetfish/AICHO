@@ -169,9 +169,9 @@ int main()
   // TODO: Optimize this with DMA/interrupt
   uint32_t read_adc() {
     // Median filter; take central two quartiles
-    // In experiments, this achieves +/- 20 mV consistently with the pumps and valves running
-    static uint32_t v[12];
-    for (int i = 0; i < 12; i++) {
+    // In experiments, this achieves +/- 10 mV consistently with the pumps and valves running
+    static uint32_t v[128];
+    for (int i = 0; i < 128; i++) {
       HAL_ADC_Start(&adc1);
       HAL_ADC_PollForConversion(&adc1, HAL_MAX_DELAY);
       uint32_t adc_value = HAL_ADC_GetValue(&adc1);
@@ -179,14 +179,14 @@ int main()
       v[i] = adc_value;
       HAL_ADC_Stop(&adc1);
     }
-    for (int i = 0; i < 12; i++)
-      for (int j = i; j < 12; j++)
+    for (int i = 0; i < 128; i++)
+      for (int j = i; j < 128; j++)
         if (v[i] > v[j]) { uint32_t t = v[i]; v[i] = v[j]; v[j] = t; }
-    for (int i = 0; i < 12; i++)
-      if (i % 2 == 0) printf("%4d ", (unsigned)v[i]);
+    // for (int i = 0; i < 16; i++)
+    //   if (i % 2 == 0) printf("%4d ", (unsigned)v[i]);
     uint32_t sum = 0;
-    for (int i = 3; i < 9; i++) sum += v[i];
-    return (sum * 5500 + 2048) / 4096;  // Unit: 0.1 mV
+    for (int i = 48; i < 80; i++) sum += v[i];
+    return (sum * 4125 / 4 /* * 33000 / 32 */ + 2048) / 4096;  // Unit: 0.1 mV
   }
 
   // ============ RS-485 UART ============ //
@@ -221,21 +221,46 @@ int main()
   USART2->CR1 |= USART_CR1_UE;
 }
 
-  void delay(int n) {
-    for (int i = 0; i < n; i++) {
-      delay_us(100000);
-      printf("ADC %5u\n", (unsigned)read_adc());
-    }
-  }
+if (0) {
+  TIM1->CCR3 = 200; TIM3->CCR1 = 200;
+  HAL_Delay(1000);
+  TIM1->CCR3 = TIM3->CCR1 = 0;
   while (1) {
-    ACT_ON(); TIM1->CCR4 = 150;
-    delay(5);
-    ACT_OFF(); TIM1->CCR4 = 0;
-    delay(10);
-    ACT_ON(); TIM1->CCR3 = 150; TIM3->CCR1 = 200;
-    delay(10);
-    ACT_OFF(); TIM1->CCR3 = TIM3->CCR1 = 0;
-    delay(15);
+    uint32_t v[25][3];
+    for (int i = 0; i < 25; i++) {
+      TIM1->CCR4 = (i < 10 ? 150 : 0);
+      delay_us(100000);
+      v[i][0] = read_adc();
+      v[i][1] = read_adc();
+      v[i][2] = read_adc();
+    }
+    for (int i = 0; i < 25; i++) {
+      printf("%2d %5u %5u %5u\n", i, (unsigned)v[i][0], (unsigned)v[i][1], (unsigned)v[i][2]);
+    }
+    TIM1->CCR3 = 150; TIM3->CCR1 = 200;
+    HAL_Delay(1500);
+    TIM1->CCR3 = TIM3->CCR1 = 0;
+  }
+}
+
+  void inflate(unsigned reading) {
+    uint32_t t0 = HAL_GetTick();
+    TIM1->CCR4 = 150;
+    while (read_adc() < reading && HAL_GetTick() - t0 < 2000) { }
+    TIM1->CCR4 = 0;
+  }
+  void drain(unsigned reading) {
+    uint32_t t0 = HAL_GetTick();
+    TIM1->CCR3 = 150; TIM3->CCR1 = 200;
+    while (read_adc() > reading && HAL_GetTick() - t0 < 5000) { }
+    TIM1->CCR3 = TIM3->CCR1 = 0;
+  }
+  drain(500);
+  while (1) {
+    ACT_ON(); inflate(8500); ACT_OFF();
+    HAL_Delay(500);
+    ACT_ON(); drain(500); ACT_OFF(); 
+    HAL_Delay(500);
   }
 }
 
