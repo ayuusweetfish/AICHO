@@ -344,6 +344,9 @@ if (0) {
   });
 }
 
+  // Clear lights
+  downstream_tx((uint8_t []){0x01, 0x00, 0x00, 0x00, 0x00}, 5);
+
   void inflate(unsigned reading) {
     uint32_t t0 = HAL_GetTick();
     TIM1->CCR4 = 150;
@@ -389,6 +392,7 @@ if (0) {
   int progress = 0;
 
   int state_start_intensity = 0;
+  bool inflate_is_first = false;
 
   uint32_t tick = HAL_GetTick();
   while (1) {
@@ -418,7 +422,10 @@ re_switch:
 
     switch (state) {
     case STATE_IDLE: {
-      if (try_take_op(OP_INFLATE)) reset_state(STATE_INFLATE);
+      if (try_take_op(OP_INFLATE)) {
+        inflate_is_first = true;
+        reset_state(STATE_INFLATE);
+      }
       if (try_take_op(OP_DRAIN)) reset_state(STATE_DRAIN);
 
       intensity = 4096;
@@ -439,10 +446,14 @@ re_switch:
         reset_state_cont(STATE_INFLATE_STOP);
       }
 
-      intensity = state_time * 2;
-      if (intensity >= 3072) {
-        intensity = 3072 + (intensity - 3072) / 2;
-        if (intensity >= 4096) intensity = 4096;
+      if (inflate_is_first) {
+        intensity = 4096;
+      } else {
+        intensity = state_start_intensity + state_time * 2;
+        if (intensity >= 3072) {
+          intensity = 3072 + (intensity - 3072) / 2;
+          if (intensity >= 4096) intensity = 4096;
+        }
       }
 
       uint32_t inflate_duty = 0;
@@ -458,13 +469,16 @@ re_switch:
 
     case STATE_DRAIN:
     case STATE_DRAIN_STOP: {
-      if (try_take_op(OP_INFLATE)) reset_state(STATE_INFLATE);
+      if (try_take_op(OP_INFLATE)) {
+        inflate_is_first = false;
+        reset_state(STATE_INFLATE);
+      }
       if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
 
       if (state == STATE_DRAIN && (state_time >= 2000 || pressure < 1000))
         reset_state_cont(STATE_DRAIN_STOP);
 
-      intensity = state_start_intensity - state_time * 2;
+      intensity = state_start_intensity - state_time * 3;
       if (intensity < 512) {
         intensity = 512 - (512 - intensity) / 2;
         if (intensity < 0) intensity = 0;
@@ -481,8 +495,13 @@ re_switch:
       intensity = state_start_intensity - state_time * 3;
       if (intensity < 0) intensity = 0;
 
+      static int min_pressure = 0;
+      if (state_time == 0) min_pressure = pressure;
+      else if (pressure < min_pressure) min_pressure = pressure;
+
       TIM1->CCR4 = 0;
-      TIM1->CCR3 = 0; TIM3->CCR1 = (pressure >= 500 ? 160 : 0);
+      TIM1->CCR3 = (min_pressure >= 1000 ? 150 : 0);
+      TIM3->CCR1 = (min_pressure >= 500 ? 160 : 0);
     } break;
     }
     if (state_time < 60000) state_time += 10;
@@ -501,10 +520,13 @@ re_switch:
     // Operations simulation
     static int tt = 0;
     tt += 10;
-    if (tt == 10000) tt = 0;
-    if (tt == 1000) op = OP_INFLATE;
-    if (tt == 4000) op = OP_DRAIN;
-    if (tt == 8000) op = OP_FADE_OUT;
+    if (tt == 15000) tt = 0;
+    if (tt == 4000) op = OP_INFLATE;
+    if (tt == 6000) op = OP_DRAIN;
+    if (tt == 8000) op = OP_INFLATE;
+    if (tt == 10000) op = OP_DRAIN;
+    if (tt == 11000) op = OP_INFLATE;
+    if (tt == 13000) op = OP_FADE_OUT;
   }
 
   while (1) {
