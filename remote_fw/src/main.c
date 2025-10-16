@@ -202,14 +202,15 @@ int main()
   HAL_NVIC_SetPriority(USART2_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(USART2_IRQn);
 
-  USART2->CR1 |= USART_CR1_RXNEIE;
-  USART2->CR1 |= USART_CR1_UE;
-
+  USART2->CR1 |= (USART_CR1_RXNEIE | USART_CR1_UE);
 }
 
   static uint8_t a[128 * 24 + 1];
+  uint32_t ticks = HAL_GetTick();
+  uint32_t count = 0;
   while (1) {
-    ACT_ON();
+    if (++count == 500) count = 0;
+    if (count < 20) ACT_ON(); else ACT_OFF();
     wait_lights();
     __disable_irq();
     uint8_t t = lights_type;
@@ -235,10 +236,14 @@ int main()
       break;
     default:
     }
-    HAL_Delay(2);
+    while (HAL_GetTick() - ticks < 2) __WFI();
   }
 }
 
+static inline void serial_driver_enable(bool enable)
+{
+  HAL_GPIO_WritePin(GPIOA, (1 << 6), enable);
+}
 static inline void serial_tx_byte(uint8_t x)
 {
   while (!(USART2->SR & USART_SR_TXE)) { }
@@ -248,27 +253,17 @@ static inline void serial_tx_finish()
 {
   while (!(USART2->SR & USART_SR_TC)) { }
 }
-static inline void serial_driver_enable(bool enable)
-{
-  HAL_GPIO_WritePin(GPIOA, (1 << 6), enable);
-}
 static inline uint32_t serial_get_tick()
 {
   return HAL_GetTick();
 }
 
-
 static inline void serial_rx_process_packet(uint8_t *packet, uint8_t n)
 {
-  if (crc32_bulk(packet, n) != 0x2144DF1C) return;
-
-  if (n >= 5 && packet[0] == 0x02) {
+  if (n >= 5 && (packet[0] >= 0x01 && packet[0] <= 0x04)) {
     lights_type = packet[0];
     lights_intensity = ((uint16_t)packet[1] << 8) | packet[2];
     lights_progress = ((uint16_t)packet[3] << 8) | packet[4];
-  } else if (n >= 3 && (packet[0] == 0x01 || packet[0] == 0x03 || packet[0] == 0x04)) {
-    lights_type = packet[0];
-    lights_intensity = ((uint16_t)packet[1] << 8) | packet[2];
   }
   serial_tx((uint8_t []){0xAC, lights_type}, 2);
 }
