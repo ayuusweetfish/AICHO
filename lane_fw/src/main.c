@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 // #define RELEASE
 #include "debug_printf.h"
@@ -229,9 +230,12 @@ int main()
       v[i] = adc_value;
       HAL_ADC_Stop(&adc1);
     }
-    for (int i = 0; i < 128; i++)
-      for (int j = i; j < 128; j++)
-        if (v[i] > v[j]) { uint32_t t = v[i]; v[i] = v[j]; v[j] = t; }
+    int uint32_cmp(const void *_a, const void *_b) {
+      uint32_t a = *(const uint32_t *)_a;
+      uint32_t b = *(const uint32_t *)_b;
+      return a < b ? -1 : a == b ? 0 : 1;
+    }
+    qsort(v, sizeof(v) / sizeof(uint32_t), sizeof(uint32_t), uint32_cmp);
     // for (int i = 0; i < 16; i++)
     //   if (i % 2 == 0) printf("%4d ", (unsigned)v[i]);
     uint32_t sum = 0;
@@ -241,6 +245,17 @@ int main()
     // Reading = round(sum / 32 * 1.2 V / vrefint_value)
     return ((sum * 375 + vrefint_value / 2) / vrefint_value); // Unit: 0.1 mV
   }
+
+  // Test ADC sampling speed
+{
+  for (int i = 0; i < 10; i++) {
+    HAL_Delay(2);
+    uint32_t t = HAL_GetTick();
+    int n = 0;
+    while (HAL_GetTick() - t < 1000) { read_adc(); n++; }
+    printf("ADC %d samples/s\n", n);
+  }
+}
 
   // ============ RS-485 driver enable signal ============ //
   HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
