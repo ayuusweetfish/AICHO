@@ -316,7 +316,7 @@ int main()
     ACT_ON();
     for (int i = 0; i < 256; i++) {
       uint16_t l = i * 16;
-      downstream_tx((uint8_t []){0x01, l >> 8, l & 0xff}, 3);
+      downstream_tx((uint8_t []){0x01, l >> 8, l & 0xff, 0x00, 0x00}, 5);
       delay_us(10000);
     }
   }
