@@ -347,6 +347,16 @@ if (0) {
   // Clear lights
   downstream_tx((uint8_t []){0x01, 0x00, 0x00, 0x00, 0x00}, 5);
 
+  while (1) {
+    ACT_ON();
+    for (int i = 0; i < 256; i++) {
+      uint16_t l = i * 16;
+      downstream_tx((uint8_t []){0x01, l >> 8, l & 0xff, 0x00, 0x00}, 5);
+      delay_us(10000);
+      IWDG->KR = IWDG_KEY_RELOAD;
+    }
+  }
+
   void inflate(unsigned reading) {
     uint32_t t0 = HAL_GetTick();
     TIM1->CCR4 = 150;
@@ -529,16 +539,6 @@ re_switch:
     if (tt == 10000) op = OP_DRAIN;
     if (tt == 11000) op = OP_INFLATE;
     if (tt == 13000) op = OP_FADE_OUT;
-  }
-
-  while (1) {
-    ACT_ON();
-    for (int i = 0; i < 256; i++) {
-      uint16_t l = i * 16;
-      downstream_tx((uint8_t []){0x01, l >> 8, l & 0xff, 0x00, 0x00}, 5);
-      delay_us(10000);
-      IWDG->KR = IWDG_KEY_RELOAD;
-    }
   }
 
   while (1) {
