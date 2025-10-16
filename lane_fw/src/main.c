@@ -152,6 +152,7 @@ int main()
   // ============ Pressure sensor ============ //
   // PA3 = ADC_IN3
   static ADC_HandleTypeDef adc1;
+  uint32_t vrefint_value = 0;
 {
   HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
     .Mode = GPIO_MODE_ANALOG,
@@ -172,13 +173,49 @@ int main()
   };
   HAL_ADC_Init(&adc1);
   HAL_ADC_Calibration_Start(&adc1);
-
-  HAL_ADC_ConfigChannel(&adc1, &(ADC_ChannelConfTypeDef){
-    .Channel = ADC_CHANNEL_3,
-    .Rank = ADC_RANK_CHANNEL_NUMBER,
-    .SamplingTime = ADC_SAMPLETIME_41CYCLES_5,  // Obsolete
-  });
 }
+
+  void calibrate_vcc() {
+    HAL_ADC_ConfigChannel(&adc1, &(ADC_ChannelConfTypeDef){
+      .Channel = ADC_CHANNEL_3,
+      .Rank = ADC_RANK_NONE,
+    });
+    HAL_ADC_ConfigChannel(&adc1, &(ADC_ChannelConfTypeDef){
+      .Channel = ADC_CHANNEL_VREFINT,
+      .Rank = ADC_RANK_CHANNEL_NUMBER,
+    });
+
+    ADC->CCR |= ADC_CCR_VREFEN;
+    vrefint_value = 0;
+    for (int i = 0; i < 16; i++) {
+      delay_us(100);
+      HAL_ADC_Start(&adc1);
+      HAL_ADC_PollForConversion(&adc1, HAL_MAX_DELAY);
+      vrefint_value += HAL_ADC_GetValue(&adc1);
+      HAL_ADC_Stop(&adc1);
+    }
+    vrefint_value = (vrefint_value + 8) / 16;
+    if (!vrefint_value) vrefint_value = 1;
+    uint32_t vcc_mV = (1200 * 4096 / vrefint_value);
+    printf("Vrefint reading = %lu, Vcc = %lu mV\n", vrefint_value, vcc_mV);
+    if (vcc_mV <= 3000 || vcc_mV >= 3600) {
+      for (int i = 0; i < 10; i++) {
+        ACT_ON(); delay_us(100000);
+        ACT_OFF(); delay_us(100000);
+      }
+      HAL_NVIC_SystemReset();
+    }
+
+    HAL_ADC_ConfigChannel(&adc1, &(ADC_ChannelConfTypeDef){
+      .Channel = ADC_CHANNEL_VREFINT,
+      .Rank = ADC_RANK_NONE,
+    });
+    HAL_ADC_ConfigChannel(&adc1, &(ADC_ChannelConfTypeDef){
+      .Channel = ADC_CHANNEL_3,
+      .Rank = ADC_RANK_CHANNEL_NUMBER,
+    });
+  }
+  calibrate_vcc();
 
   // TODO: Optimize this with DMA/interrupt
   uint32_t read_adc() {
@@ -200,17 +237,26 @@ int main()
     //   if (i % 2 == 0) printf("%4d ", (unsigned)v[i]);
     uint32_t sum = 0;
     for (int i = 48; i < 80; i++) sum += v[i];
-    return (sum * 4125 / 4 /* * 33000 / 32 */ + 2048) / 4096;  // Unit: 0.1 mV
+    // Reading = round(sum / 32 * Vcc / 4096)
+    // Vcc = 1.2 V / (vrefint_value / 4096)
+    // Reading = round(sum / 32 * 1.2 V / vrefint_value)
+    return ((sum * 375 + vrefint_value / 2) / vrefint_value); // Unit: 0.1 mV
   }
 
   // ============ RS-485 driver enable signal ============ //
   HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
+  // delay_us(1000000);
   HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
     .Mode = GPIO_MODE_OUTPUT_PP,
     .Pin = (1 << 6),
     .Pull = GPIO_NOPULL,
     .Speed = GPIO_SPEED_FREQ_LOW,
   });
+  // delay_us(1000000);
+  // HAL_GPIO_WritePin(GPIOA, (1 << 6), 1);
+  // delay_us(500000);
+  // HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
+  // delay_us(1000000);
 
   // ============ RS-485 UART ============ //
   // PA4 AF9 = UART2_TX
@@ -268,21 +314,11 @@ int main()
     },
   };
   HAL_UART_Init(&uart1);
-
-  ACT_ON();
-  while (0) {
-    for (char c = 32; c <= 126; c++) {
-      while (!(USART1->SR & USART_SR_TXE)) { }
-      USART1->DR = c;
-    }
-    HAL_Delay(100);
-  }
 }
 
 #undef printf
 #define printf(...) do { char _s[64]; int _n = snprintf(_s, sizeof _s, __VA_ARGS__); if (_n >= sizeof _s) _n = sizeof _s; upstream_tx((void *)_s, _n); } while (0)
 
-  ACT_ON();
   while (0) {
     for (int i = 0; i < 256; i++) {
       uint16_t l = i * 16;
@@ -327,12 +363,24 @@ if (0) {
   }
 
   while (1) {
+    ACT_ON();
     for (int i = 6000; i <= 8500; i += 200) {
-      drain(500);
-      inflate(i);
-      HAL_Delay(1000);
-      printf("%5d %5d\n", i, (int)read_adc());
+      printf("%5d:", i);
+      uint32_t sum = 0;
+      for (int j = 0; j < 6; j++) {
+        drain(500);
+        HAL_Delay(1000);
+        inflate(i);
+        HAL_Delay(1500);
+        uint32_t v = read_adc();
+        printf(" %5d", (int)v);
+        sum += v;
+      }
+      printf(" = %5d\n", (int)((sum + 3) / 6));
     }
+    ACT_OFF();
+    drain(500);
+    HAL_Delay(1000);
   }
 
   drain(500);
