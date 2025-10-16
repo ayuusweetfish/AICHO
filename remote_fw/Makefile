@@ -127,6 +127,11 @@ ARCH_FLAGS	:= -mthumb -mcpu=cortex-m0plus
 DEBUG_FLAGS ?= -gdwarf-3 -fstack-usage
 
 OPT			?= -Og
+
+ifeq ($(RELEASE),1)
+OPT = -O2 -DRELEASE
+endif
+
 # C flags
 TGT_CFLAGS		?= $(ARCH_FLAGS) $(DEBUG_FLAGS) $(OPT) -std=c99 $(addprefix -D, $(LIB_FLAGS)) -Wall -ffunction-sections -fdata-sections
 # C++ flags
