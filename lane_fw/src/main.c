@@ -247,7 +247,7 @@ int main()
   }
 
   // Test ADC sampling speed
-{
+if (0) {
   for (int i = 0; i < 10; i++) {
     HAL_Delay(2);
     uint32_t t = HAL_GetTick();
@@ -259,18 +259,12 @@ int main()
 
   // ============ RS-485 driver enable signal ============ //
   HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
-  // delay_us(1000000);
   HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
     .Mode = GPIO_MODE_OUTPUT_PP,
     .Pin = (1 << 6),
     .Pull = GPIO_NOPULL,
     .Speed = GPIO_SPEED_FREQ_LOW,
   });
-  // delay_us(1000000);
-  // HAL_GPIO_WritePin(GPIOA, (1 << 6), 1);
-  // delay_us(500000);
-  // HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
-  // delay_us(1000000);
 
   // ============ RS-485 UART ============ //
   // PA4 AF9 = UART2_TX
@@ -300,8 +294,7 @@ int main()
   HAL_NVIC_SetPriority(USART2_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(USART2_IRQn);
 
-  USART2->CR1 |= USART_CR1_RXNEIE;
-  USART2->CR1 |= USART_CR1_UE;
+  USART2->CR1 |= (USART_CR1_RXNEIE | USART_CR1_UE);
 }
 
   // ============ Half-duplex UART ============ //
@@ -331,10 +324,8 @@ int main()
 
   HAL_NVIC_SetPriority(USART1_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(USART1_IRQn);
-  USART1->CR1 |= USART_CR1_RXNEIE;
-  USART1->CR1 |= USART_CR1_UE;
+  USART1->CR1 |= (USART_CR1_RXNEIE | USART_CR1_UE);
 
-  // HAL_HalfDuplex_EnableReceiver(&uart1);
   USART1->CR1 = (USART1->CR1 & ~(USART_CR1_TE | USART_CR1_RE)) | USART_CR1_RE;
 }
 
@@ -353,6 +344,131 @@ int main()
   });
 }
 
+  void inflate(unsigned reading) {
+    uint32_t t0 = HAL_GetTick();
+    TIM1->CCR4 = 150;
+    while (read_adc() < reading && HAL_GetTick() - t0 < 2000)
+      IWDG->KR = IWDG_KEY_RELOAD;
+    TIM1->CCR4 = 0;
+  }
+  void drain(unsigned reading) {
+    uint32_t t0 = HAL_GetTick();
+    TIM1->CCR3 = 150; TIM3->CCR1 = 160;
+    while (read_adc() > reading && HAL_GetTick() - t0 < 5000)
+      IWDG->KR = IWDG_KEY_RELOAD;
+    TIM1->CCR3 = TIM3->CCR1 = 0;
+  }
+  drain(500);
+
+  enum {
+    STATE_IDLE,
+    STATE_INFLATE,
+    STATE_INFLATE_STOP,
+    STATE_DRAIN,
+    STATE_DRAIN_STOP,
+    STATE_FADE_OUT,
+  } state = STATE_IDLE;
+  uint32_t state_time = 0;
+
+  enum {
+    OP_INFLATE = (1 << 0),
+    OP_DRAIN = (1 << 1),
+    OP_FADE_OUT = (1 << 2),
+  } op = 0;
+
+  inline bool try_take_op(unsigned mask) {
+    if ((op & mask) == mask) {
+      op ^= mask;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  uint32_t tick = HAL_GetTick();
+  while (1) {
+    uint32_t pressure = read_adc();
+
+re_switch:
+    #define reset_state(_s) \
+      do { state = (_s); state_time = 0; goto re_switch; } while (0)
+    #define reset_state_cont(_s) \
+      do { state = (_s); goto re_switch; } while (0)
+
+    if (pressure >= 8700) {
+      // Dangerous level. Open valve and wait for 5 seconds
+      // Should not happen during normal operation
+      TIM1->CCR4 = 0;
+      TIM1->CCR3 = 0; TIM3->CCR1 = 160;
+      for (int i = 0; i < 500; i++) {
+        HAL_Delay(10);
+        IWDG->KR = IWDG_KEY_RELOAD;
+      }
+    }
+
+    switch (state) {
+    case STATE_IDLE: {
+      if (try_take_op(OP_INFLATE)) reset_state(STATE_INFLATE);
+      if (try_take_op(OP_DRAIN)) reset_state(STATE_DRAIN);
+
+      TIM1->CCR4 = 0;
+      TIM1->CCR3 = 0; TIM3->CCR1 = 0;
+    } break;
+
+    case STATE_INFLATE:
+    case STATE_INFLATE_STOP: {
+      if (try_take_op(OP_DRAIN)) reset_state(STATE_DRAIN);
+      if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
+
+      if (state == STATE_INFLATE && pressure >= 7500)
+        reset_state(STATE_INFLATE_STOP);
+
+      uint32_t inflate_duty = 0;
+      if (state == STATE_INFLATE) {
+        inflate_duty = 150;
+      } else {
+        if (state_time < 75) inflate_duty = 150 - state_time * 2;
+      }
+      TIM1->CCR4 = inflate_duty;
+      TIM1->CCR3 = 0; TIM3->CCR1 = 0;
+    } break;
+
+    case STATE_DRAIN:
+    case STATE_DRAIN_STOP: {
+      if (try_take_op(OP_INFLATE)) reset_state(STATE_INFLATE);
+      if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
+
+      if (state == STATE_DRAIN && (state_time >= 200 || pressure < 1000))
+        reset_state_cont(STATE_DRAIN_STOP);
+
+      uint32_t drain_duty = (state == STATE_DRAIN ? 150 : 0);
+      TIM1->CCR4 = 0;
+      TIM1->CCR3 = drain_duty; TIM3->CCR1 = 160;
+    } break;
+
+    case STATE_FADE_OUT: {
+      if (state_time >= 200) reset_state(STATE_IDLE);
+
+      TIM1->CCR4 = 0;
+      TIM1->CCR3 = 0; TIM3->CCR1 = (pressure >= 500 ? 160 : 0);
+    } break;
+    }
+    state_time++;
+
+    while (HAL_GetTick() - tick < 10) __WFI();
+    tick += 10;
+    IWDG->KR = IWDG_KEY_RELOAD;
+    op = 0;
+
+    // Operations simulation
+    static int tt = 0;
+    tt += 10;
+    if (tt == 10000) tt = 0;
+    if (tt == 1000) op = OP_INFLATE;
+    if (tt == 4000) op = OP_DRAIN;
+    if (tt == 8000) op = OP_FADE_OUT;
+  }
+
   while (1) {
     ACT_ON();
     for (int i = 0; i < 256; i++) {
@@ -363,49 +479,7 @@ int main()
     }
   }
 
-  void inflate(unsigned reading) {
-    uint32_t t0 = HAL_GetTick();
-    TIM1->CCR4 = 150;
-    while (read_adc() < reading && HAL_GetTick() - t0 < 2000) { }
-    TIM1->CCR4 = 0;
-  }
-  void drain(unsigned reading) {
-    uint32_t t0 = HAL_GetTick();
-    TIM1->CCR3 = 150; TIM3->CCR1 = 200;
-    while (read_adc() > reading && HAL_GetTick() - t0 < 5000) { }
-    TIM1->CCR3 = TIM3->CCR1 = 0;
-  }
-  drain(500);
-
   while (1) {
-  }
-
-  while (0) {
-    ACT_ON();
-    for (int i = 6000; i <= 8500; i += 200) {
-      printf("%5d:", i);
-      uint32_t sum = 0;
-      for (int j = 0; j < 6; j++) {
-        drain(500);
-        HAL_Delay(1000);
-        inflate(i);
-        HAL_Delay(1500);
-        uint32_t v = read_adc();
-        printf(" %5d", (int)v);
-        sum += v;
-      }
-      printf(" = %5d\n", (int)((sum + 3) / 6));
-    }
-    ACT_OFF();
-    drain(500);
-    HAL_Delay(1000);
-  }
-
-  while (0) {
-    ACT_ON(); inflate(8500); ACT_OFF();
-    HAL_Delay(500);
-    ACT_ON(); drain(500); ACT_OFF(); 
-    HAL_Delay(500);
   }
 }
 
