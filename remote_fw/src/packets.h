@@ -1,3 +1,5 @@
+#include "crc32.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -5,9 +7,9 @@
 #define PACKETS_FN_(_i, _n) PACKETS_FN__(_i, _n)
 #define PACKETS_FN(_n) PACKETS_FN_(PACKETS_INSTANCE_NAME, _n)
 
+static inline void PACKETS_FN(driver_enable)(bool enable);
 static inline void PACKETS_FN(tx_byte)(uint8_t x);
 static inline void PACKETS_FN(tx_finish)(void);
-static inline void PACKETS_FN(driver_enable)(bool enable);
 static inline uint32_t PACKETS_FN(get_tick)();
 static inline void PACKETS_FN(rx_process_packet)(uint8_t *packet, uint8_t n);
 
@@ -57,7 +59,8 @@ static inline void PACKETS_FN(rx_process_byte)(uint8_t x)
     is_in_escape = false;
   } else {
     if (x == 0xAA) {
-      PACKETS_FN(rx_process_packet)(packet, ptr);
+      if (crc32_bulk(packet, ptr) == 0x2144DF1C)
+        PACKETS_FN(rx_process_packet)(packet, ptr);
       ptr = 0;
     } else if (x == 0x55) {
       is_in_escape = true;
@@ -66,3 +69,9 @@ static inline void PACKETS_FN(rx_process_byte)(uint8_t x)
     }
   }
 }
+
+#undef PACKETS_FN
+#undef PACKETS_FN_
+#undef PACKETS_FN__
+
+#undef PACKETS_INSTANCE_NAME

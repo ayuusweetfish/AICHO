@@ -8,8 +8,6 @@
 // #define RELEASE
 #include "debug_printf.h"
 
-#include "crc32.h"
-
 #define LED_WRITE_I(_i, _c) do { \
   for (int _j = 0; _j < 8; _j++) out[(_i) * 24 +  0 + _j] = ((((_c).g >> (7 - _j)) & 1) ? 13 : 6); \
   for (int _j = 0; _j < 8; _j++) out[(_i) * 24 +  8 + _j] = ((((_c).r >> (7 - _j)) & 1) ? 13 : 6); \

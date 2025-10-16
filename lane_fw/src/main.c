@@ -6,8 +6,6 @@
 // #define RELEASE
 #include "debug_printf.h"
 
-#include "crc32.h"
-
 static void spin_delay(uint32_t cycles)
 {
   __asm__ volatile (
@@ -32,23 +30,8 @@ static inline void delay_us(uint32_t us)
 #define PACKETS_INSTANCE_NAME serial
 #include "packets.h"
 
-static inline void upstream_tx(const uint8_t *buf, uint32_t n)
-{
-  USART1->CR1 = (USART1->CR1 & ~(USART_CR1_TE | USART_CR1_RE)) | USART_CR1_TE;
-
-  for (uint32_t i = 0; i < n; i++) {
-    // XXX: Eliminate when not used for debugging
-    if (buf[i] == '\n') {
-      while (!(USART1->SR & USART_SR_TXE)) { }
-      USART1->DR = '\r';
-    }
-    while (!(USART1->SR & USART_SR_TXE)) { }
-    USART1->DR = buf[i];
-  }
-  while (!(USART1->SR & USART_SR_TC)) { }
-
-  USART1->CR1 = (USART1->CR1 & ~(USART_CR1_TE | USART_CR1_RE)) | USART_CR1_RE;
-}
+#define PACKETS_INSTANCE_NAME upstream
+#include "packets.h"
 
 #pragma GCC push_options
 #pragma GCC optimize("O3")
@@ -329,7 +312,8 @@ int main()
   USART1->CR1 = (USART1->CR1 & ~(USART_CR1_TE | USART_CR1_RE)) | USART_CR1_RE;
 }
 
-  while (0) {
+  while (1) {
+    ACT_ON();
     for (int i = 0; i < 256; i++) {
       uint16_t l = i * 16;
       serial_tx((uint8_t []){0x01, l >> 8, l & 0xff}, 3);
@@ -383,6 +367,10 @@ int main()
   }
 }
 
+static inline void serial_driver_enable(bool enable)
+{
+  HAL_GPIO_WritePin(GPIOA, (1 << 6), enable);
+}
 static inline void serial_tx_byte(uint8_t x)
 {
   while (!(USART2->SR & USART_SR_TXE)) { }
@@ -392,10 +380,6 @@ static inline void serial_tx_finish()
 {
   while (!(USART2->SR & USART_SR_TC)) { }
 }
-static inline void serial_driver_enable(bool enable)
-{
-  HAL_GPIO_WritePin(GPIOA, (1 << 6), enable);
-}
 static inline uint32_t serial_get_tick()
 {
   return HAL_GetTick();
@@ -403,9 +387,31 @@ static inline uint32_t serial_get_tick()
 
 static inline void serial_rx_process_packet(uint8_t *packet, uint8_t n)
 {
-  if (crc32_bulk(packet, n) != 0x2144DF1C) return;
   printf("ok %d\n", (int)n);
   HAL_GPIO_TogglePin(GPIOB, 1 << 7);
+}
+
+static inline void upstream_driver_enable(bool enable)
+{
+  USART1->CR1 = (USART1->CR1 & ~(USART_CR1_TE | USART_CR1_RE))
+    | (enable ? USART_CR1_TE : USART_CR1_RE);
+}
+static inline void upstream_tx_byte(uint8_t x)
+{
+  while (!(USART1->SR & USART_SR_TXE)) { }
+  USART1->DR = x;
+}
+static inline void upstream_tx_finish()
+{
+  while (!(USART1->SR & USART_SR_TC)) { }
+}
+static inline uint32_t upstream_get_tick()
+{
+  return HAL_GetTick();
+}
+
+static inline void upstream_rx_process_packet(uint8_t *packet, uint8_t n)
+{
 }
 
 void NMI_Handler() { while (1) { } }

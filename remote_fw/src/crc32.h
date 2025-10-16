@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdint.h> // uint*_t
 #include <stdlib.h> // size_t
 
