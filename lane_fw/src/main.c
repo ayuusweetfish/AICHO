@@ -368,7 +368,7 @@ if (0) {
     STATE_DRAIN_STOP,
     STATE_FADE_OUT,
   } state = STATE_IDLE;
-  uint32_t state_time = 0;
+  int state_time = 0;
 
   enum {
     OP_INFLATE = (1 << 0),
@@ -385,15 +385,25 @@ if (0) {
     }
   }
 
+  int intensity = 0;
+  int progress = 0;
+
+  int state_start_intensity = 0;
+
   uint32_t tick = HAL_GetTick();
   while (1) {
     uint32_t pressure = read_adc();
 
 re_switch:
-    #define reset_state(_s) \
-      do { state = (_s); state_time = 0; goto re_switch; } while (0)
-    #define reset_state_cont(_s) \
-      do { state = (_s); goto re_switch; } while (0)
+    #define reset_state(_s) do { \
+      state = (_s); state_time = 0; \
+      state_start_intensity = intensity; \
+      goto re_switch; \
+    } while (0)
+    #define reset_state_cont(_s) do { \
+      state = (_s); \
+      goto re_switch; \
+    } while (0)
 
     if (pressure >= 8700) {
       // Dangerous level. Open valve and wait for 5 seconds
@@ -411,6 +421,9 @@ re_switch:
       if (try_take_op(OP_INFLATE)) reset_state(STATE_INFLATE);
       if (try_take_op(OP_DRAIN)) reset_state(STATE_DRAIN);
 
+      intensity = 4096;
+      if (state_time < 4096) intensity = state_time;
+
       TIM1->CCR4 = 0;
       TIM1->CCR3 = 0; TIM3->CCR1 = 0;
     } break;
@@ -420,14 +433,24 @@ re_switch:
       if (try_take_op(OP_DRAIN)) reset_state(STATE_DRAIN);
       if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
 
-      if (state == STATE_INFLATE && (pressure >= 7500 || state_time >= 200))
-        reset_state(STATE_INFLATE_STOP);
+      static int time_stop;
+      if (state == STATE_INFLATE && (state_time >= 2000 || pressure >= 7500)) {
+        time_stop = state_time;
+        reset_state_cont(STATE_INFLATE_STOP);
+      }
+
+      intensity = state_time * 2;
+      if (intensity >= 3072) {
+        intensity = 3072 + (intensity - 3072) / 2;
+        if (intensity >= 4096) intensity = 4096;
+      }
 
       uint32_t inflate_duty = 0;
       if (state == STATE_INFLATE) {
         inflate_duty = 150;
       } else {
-        if (state_time < 75) inflate_duty = 150 - state_time * 2;
+        if (state_time - time_stop < 750)
+          inflate_duty = 150 - (state_time - time_stop) / 5;
       }
       TIM1->CCR4 = inflate_duty;
       TIM1->CCR3 = 0; TIM3->CCR1 = 0;
@@ -438,8 +461,14 @@ re_switch:
       if (try_take_op(OP_INFLATE)) reset_state(STATE_INFLATE);
       if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
 
-      if (state == STATE_DRAIN && (state_time >= 200 || pressure < 1000))
+      if (state == STATE_DRAIN && (state_time >= 2000 || pressure < 1000))
         reset_state_cont(STATE_DRAIN_STOP);
+
+      intensity = state_start_intensity - state_time * 2;
+      if (intensity < 512) {
+        intensity = 512 - (512 - intensity) / 2;
+        if (intensity < 0) intensity = 0;
+      }
 
       uint32_t drain_duty = (state == STATE_DRAIN ? 150 : 0);
       TIM1->CCR4 = 0;
@@ -447,18 +476,27 @@ re_switch:
     } break;
 
     case STATE_FADE_OUT: {
-      if (state_time >= 200) reset_state(STATE_IDLE);
+      if (state_time >= 2000) reset_state(STATE_IDLE);
+
+      intensity = state_start_intensity - state_time * 3;
+      if (intensity < 0) intensity = 0;
 
       TIM1->CCR4 = 0;
       TIM1->CCR3 = 0; TIM3->CCR1 = (pressure >= 500 ? 160 : 0);
     } break;
     }
-    state_time++;
+    if (state_time < 60000) state_time += 10;
 
     while (HAL_GetTick() - tick < 10) __WFI();
     tick += 10;
     IWDG->KR = IWDG_KEY_RELOAD;
     op = 0;
+
+    downstream_tx((uint8_t []){
+      0x01,
+      intensity >> 8, intensity & 0xff,
+      progress >> 8, progress & 0xff,
+    }, 5);
 
     // Operations simulation
     static int tt = 0;
