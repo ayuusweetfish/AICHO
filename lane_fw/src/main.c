@@ -27,7 +27,7 @@ static inline void delay_us(uint32_t us)
   spin_delay(us * 16);
 }
 
-#define PACKETS_INSTANCE_NAME serial
+#define PACKETS_INSTANCE_NAME downstream
 #include "packets.h"
 
 #define PACKETS_INSTANCE_NAME upstream
@@ -316,7 +316,7 @@ int main()
     ACT_ON();
     for (int i = 0; i < 256; i++) {
       uint16_t l = i * 16;
-      serial_tx((uint8_t []){0x01, l >> 8, l & 0xff}, 3);
+      downstream_tx((uint8_t []){0x01, l >> 8, l & 0xff}, 3);
       delay_us(10000);
     }
   }
@@ -367,25 +367,25 @@ int main()
   }
 }
 
-static inline void serial_driver_enable(bool enable)
+static inline void downstream_driver_enable(bool enable)
 {
   HAL_GPIO_WritePin(GPIOA, (1 << 6), enable);
 }
-static inline void serial_tx_byte(uint8_t x)
+static inline void downstream_tx_byte(uint8_t x)
 {
   while (!(USART2->SR & USART_SR_TXE)) { }
   USART2->DR = x;
 }
-static inline void serial_tx_finish()
+static inline void downstream_tx_finish()
 {
   while (!(USART2->SR & USART_SR_TC)) { }
 }
-static inline uint32_t serial_get_tick()
+static inline uint32_t downstream_get_tick()
 {
   return HAL_GetTick();
 }
 
-static inline void serial_rx_process_packet(uint8_t *packet, uint8_t n)
+static inline void downstream_rx_process_packet(uint8_t *packet, uint8_t n)
 {
   printf("ok %d\n", (int)n);
   HAL_GPIO_TogglePin(GPIOB, 1 << 7);
@@ -454,6 +454,6 @@ void USART1_IRQHandler()
 void USART2_IRQHandler()
 {
   uint8_t x = USART2->DR;
-  serial_rx_process_byte(x);
+  downstream_rx_process_byte(x);
 }
 #pragma GCC pop_options
