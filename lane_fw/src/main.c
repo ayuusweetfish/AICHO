@@ -33,6 +33,8 @@ static inline void delay_us(uint32_t us)
 
 static inline void upstream_tx(const uint8_t *buf, uint32_t n)
 {
+  USART1->CR1 = (USART1->CR1 & ~(USART_CR1_TE | USART_CR1_RE)) | USART_CR1_TE;
+
   for (uint32_t i = 0; i < n; i++) {
     // XXX: Eliminate when not used for debugging
     if (buf[i] == '\n') {
@@ -43,6 +45,8 @@ static inline void upstream_tx(const uint8_t *buf, uint32_t n)
     USART1->DR = buf[i];
   }
   while (!(USART1->SR & USART_SR_TC)) { }
+
+  USART1->CR1 = (USART1->CR1 & ~(USART_CR1_TE | USART_CR1_RE)) | USART_CR1_RE;
 }
 
 #pragma GCC push_options
@@ -313,11 +317,16 @@ int main()
       .OverSampling = UART_OVERSAMPLING_16,
     },
   };
-  HAL_UART_Init(&uart1);
-}
+  HAL_HalfDuplex_Init(&uart1);
 
-#undef printf
-#define printf(...) do { char _s[64]; int _n = snprintf(_s, sizeof _s, __VA_ARGS__); if (_n >= sizeof _s) _n = sizeof _s; upstream_tx((void *)_s, _n); } while (0)
+  HAL_NVIC_SetPriority(USART1_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(USART1_IRQn);
+  USART1->CR1 |= USART_CR1_RXNEIE;
+  USART1->CR1 |= USART_CR1_UE;
+
+  // HAL_HalfDuplex_EnableReceiver(&uart1);
+  USART1->CR1 = (USART1->CR1 & ~(USART_CR1_TE | USART_CR1_RE)) | USART_CR1_RE;
+}
 
   while (0) {
     for (int i = 0; i < 256; i++) {
@@ -326,28 +335,6 @@ int main()
       delay_us(10000);
     }
   }
-
-if (0) {
-  TIM1->CCR3 = 200; TIM3->CCR1 = 200;
-  HAL_Delay(1000);
-  TIM1->CCR3 = TIM3->CCR1 = 0;
-  while (1) {
-    uint32_t v[25][3];
-    for (int i = 0; i < 25; i++) {
-      TIM1->CCR4 = (i < 10 ? 150 : 0);
-      delay_us(100000);
-      v[i][0] = read_adc();
-      v[i][1] = read_adc();
-      v[i][2] = read_adc();
-    }
-    for (int i = 0; i < 25; i++) {
-      printf("%2d %5u %5u %5u\n", i, (unsigned)v[i][0], (unsigned)v[i][1], (unsigned)v[i][2]);
-    }
-    TIM1->CCR3 = 150; TIM3->CCR1 = 200;
-    HAL_Delay(1500);
-    TIM1->CCR3 = TIM3->CCR1 = 0;
-  }
-}
 
   void inflate(unsigned reading) {
     uint32_t t0 = HAL_GetTick();
@@ -361,8 +348,12 @@ if (0) {
     while (read_adc() > reading && HAL_GetTick() - t0 < 5000) { }
     TIM1->CCR3 = TIM3->CCR1 = 0;
   }
+  drain(500);
 
   while (1) {
+  }
+
+  while (0) {
     ACT_ON();
     for (int i = 6000; i <= 8500; i += 200) {
       printf("%5d:", i);
@@ -383,8 +374,7 @@ if (0) {
     HAL_Delay(1000);
   }
 
-  drain(500);
-  while (1) {
+  while (0) {
     ACT_ON(); inflate(8500); ACT_OFF();
     HAL_Delay(500);
     ACT_ON(); drain(500); ACT_OFF(); 
@@ -445,10 +435,15 @@ void TIM16_IRQHandler() { while (1) { } }
 void TIM17_IRQHandler() { while (1) { } }
 void I2C1_IRQHandler() { while (1) { } }
 void SPI1_IRQHandler() { while (1) { } }
-void USART1_IRQHandler() { while (1) { } }
 
 #pragma GCC push_options
 #pragma GCC optimize("O3")
+void USART1_IRQHandler()
+{
+  uint8_t x = USART1->DR;
+  HAL_GPIO_TogglePin(GPIOB, 1 << 7);
+}
+
 void USART2_IRQHandler()
 {
   uint8_t x = USART2->DR;
