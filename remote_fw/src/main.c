@@ -38,6 +38,7 @@ static inline void delay_us(uint32_t us)
   spin_delay(us * 16);
 }
 
+#define PACKETS_INSTANCE_NAME serial
 #include "packets.h"
 
 static volatile uint8_t lights_type = 3;
