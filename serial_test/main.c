@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
     static uint32_t l = 0;
     l = (l + 32) % 4096;
     printf("intensity = %u\n", l);
-    tx(fd, (uint8_t []){0x01, l >> 8, l & 0xFF}, 3);
+    tx(fd, (uint8_t []){0x01, l >> 8, l & 0xFF, 0x00, 0x00}, 5);
     usleep(20000);
 
     uint8_t a[64];

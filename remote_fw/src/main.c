@@ -76,6 +76,13 @@ int main()
     printf("ticks = %lu\n", HAL_GetTick());
   }
 
+if (0) {
+  uint8_t a[] = {0x01, 0x05, 0xa0, 0x00, 0x00, 0xff, 0x73, 0xe4, 0x15, 0xaa};
+  for (int i = 0; i < 10; i++)
+    serial_rx_process_byte(a[i]);
+  while (1) { }
+}
+
   // ============ Activity LED ============ //
 {
 #define ACT_ON()  GPIOB->BSRR = (1 << 7)
@@ -236,7 +243,9 @@ int main()
       break;
     default:
     }
-    while (HAL_GetTick() - ticks < 2) __WFI();
+    uint32_t ticks_now = HAL_GetTick();
+    while ((ticks_now = HAL_GetTick()) - ticks < 10) __WFI();
+    ticks = ticks_now;
   }
 }
 
@@ -304,5 +313,6 @@ void USART2_IRQHandler()
 {
   uint8_t x = USART2->DR;
   serial_rx_process_byte(x);
+  if (0) HAL_GPIO_TogglePin(GPIOB, 1 << 7);
 }
 #pragma GCC pop_options

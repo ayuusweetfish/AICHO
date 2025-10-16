@@ -59,8 +59,8 @@ static inline void PACKETS_FN(rx_process_byte)(uint8_t x)
     is_in_escape = false;
   } else {
     if (x == 0xAA) {
-      if (crc32_bulk(packet, ptr) == 0x2144DF1C)
-        PACKETS_FN(rx_process_packet)(packet, ptr);
+      if (ptr >= 4 && crc32_bulk(packet, ptr) == 0x2144DF1C)
+        PACKETS_FN(rx_process_packet)(packet, ptr - 4);
       ptr = 0;
     } else if (x == 0x55) {
       is_in_escape = true;
