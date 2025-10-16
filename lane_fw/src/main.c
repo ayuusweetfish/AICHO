@@ -366,9 +366,7 @@ if (0) {
   enum {
     STATE_IDLE,
     STATE_INFLATE,
-    STATE_INFLATE_STOP,
     STATE_DRAIN,
-    STATE_DRAIN_STOP,
     STATE_FADE_OUT,
   } state = STATE_IDLE;
   int state_time = 0;
@@ -435,15 +433,17 @@ re_switch:
       TIM1->CCR3 = 0; TIM3->CCR1 = 0;
     } break;
 
-    case STATE_INFLATE:
-    case STATE_INFLATE_STOP: {
+    case STATE_INFLATE: {
       if (try_take_op(OP_DRAIN)) reset_state(STATE_DRAIN);
       if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
 
+      static bool stopped = false;
+      if (state_time == 0) stopped = false;
+
       static int time_stop;
-      if (state == STATE_INFLATE && (state_time >= 2000 || pressure >= 7500)) {
+      if (!stopped && (state_time >= 2000 || pressure >= 7500)) {
         time_stop = state_time;
-        reset_state_cont(STATE_INFLATE_STOP);
+        stopped = true;
       }
 
       if (inflate_is_first) {
@@ -457,7 +457,7 @@ re_switch:
       }
 
       uint32_t inflate_duty = 0;
-      if (state == STATE_INFLATE) {
+      if (!stopped) {
         inflate_duty = 150;
       } else {
         if (state_time - time_stop < 750)
@@ -467,16 +467,18 @@ re_switch:
       TIM1->CCR3 = 0; TIM3->CCR1 = 0;
     } break;
 
-    case STATE_DRAIN:
-    case STATE_DRAIN_STOP: {
+    case STATE_DRAIN: {
       if (try_take_op(OP_INFLATE)) {
         inflate_is_first = false;
         reset_state(STATE_INFLATE);
       }
       if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
 
-      if (state == STATE_DRAIN && (state_time >= 2000 || pressure < 1000))
-        reset_state_cont(STATE_DRAIN_STOP);
+      static bool stopped = false;
+      if (state_time == 0) stopped = false;
+
+      if (!stopped && (state_time >= 2000 || pressure < 1000))
+        stopped = true;
 
       intensity = state_start_intensity - state_time * 3;
       if (intensity < 512) {
@@ -484,7 +486,7 @@ re_switch:
         if (intensity < 0) intensity = 0;
       }
 
-      uint32_t drain_duty = (state == STATE_DRAIN ? 150 : 0);
+      uint32_t drain_duty = (!stopped ? 150 : 0);
       TIM1->CCR4 = 0;
       TIM1->CCR3 = drain_duty; TIM3->CCR1 = 160;
     } break;
