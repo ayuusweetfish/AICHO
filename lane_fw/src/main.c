@@ -31,6 +31,20 @@ static inline void delay_us(uint32_t us)
 
 #include "packets.h"
 
+static inline void upstream_tx(const uint8_t *buf, uint32_t n)
+{
+  for (uint32_t i = 0; i < n; i++) {
+    // XXX: Eliminate when not used for debugging
+    if (buf[i] == '\n') {
+      while (!(USART1->SR & USART_SR_TXE)) { }
+      USART1->DR = '\r';
+    }
+    while (!(USART1->SR & USART_SR_TXE)) { }
+    USART1->DR = buf[i];
+  }
+  while (!(USART1->SR & USART_SR_TC)) { }
+}
+
 #pragma GCC push_options
 #pragma GCC optimize("O3")
 int main()
@@ -230,6 +244,44 @@ int main()
   USART2->CR1 |= USART_CR1_UE;
 }
 
+  // ============ Half-duplex UART ============ //
+  // PA7 AF8 = UART1_TX
+{
+  HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
+    .Mode = GPIO_MODE_AF_PP,
+    .Pin = (1 << 7),
+    .Pull = GPIO_PULLUP,
+    .Alternate = 8,
+    .Speed = GPIO_SPEED_FREQ_VERY_HIGH,
+  });
+  __HAL_RCC_USART1_CLK_ENABLE();
+  UART_HandleTypeDef uart1 = (UART_HandleTypeDef){
+    .Instance = USART1,
+    .Init = (UART_InitTypeDef){
+      .BaudRate = 115200,
+      .WordLength = UART_WORDLENGTH_8B,
+      .StopBits = UART_STOPBITS_1,
+      .Parity = UART_PARITY_NONE,
+      .Mode = UART_MODE_TX_RX,
+      .HwFlowCtl = UART_HWCONTROL_NONE,
+      .OverSampling = UART_OVERSAMPLING_16,
+    },
+  };
+  HAL_UART_Init(&uart1);
+
+  ACT_ON();
+  while (0) {
+    for (char c = 32; c <= 126; c++) {
+      while (!(USART1->SR & USART_SR_TXE)) { }
+      USART1->DR = c;
+    }
+    HAL_Delay(100);
+  }
+}
+
+#undef printf
+#define printf(...) do { char _s[64]; int _n = snprintf(_s, sizeof _s, __VA_ARGS__); if (_n >= sizeof _s) _n = sizeof _s; upstream_tx((void *)_s, _n); } while (0)
+
   ACT_ON();
   while (0) {
     for (int i = 0; i < 256; i++) {
@@ -275,8 +327,8 @@ if (0) {
   }
 
   while (1) {
-    drain(500);
     for (int i = 6000; i <= 8500; i += 200) {
+      drain(500);
       inflate(i);
       HAL_Delay(1000);
       printf("%5d %5d\n", i, (int)read_adc());
