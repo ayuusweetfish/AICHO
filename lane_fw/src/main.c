@@ -420,7 +420,7 @@ re_switch:
       if (try_take_op(OP_DRAIN)) reset_state(STATE_DRAIN);
       if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
 
-      if (state == STATE_INFLATE && pressure >= 7500)
+      if (state == STATE_INFLATE && (pressure >= 7500 || state_time >= 200))
         reset_state(STATE_INFLATE_STOP);
 
       uint32_t inflate_duty = 0;
