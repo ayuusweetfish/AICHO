@@ -61,11 +61,20 @@ int main()
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
+{
+  uint32_t rcc_csr = RCC->CSR;
+  RCC->CSR = rcc_csr | RCC_CSR_RMVF;
+  if (rcc_csr & RCC_CSR_IWDGRSTF) printf("IWDG reset\n");
+  if (rcc_csr & RCC_CSR_SFTRSTF) printf("Soft reset\n");
+  if (rcc_csr & RCC_CSR_PWRRSTF) printf("Power reset\n");
+  if (rcc_csr & RCC_CSR_PINRSTF) printf("NRST pin reset\n");
+
   printf("sysclk = %lu Hz\n", HAL_RCC_GetSysClockFreq());
   while (0) {   // Test usage
     delay_us(1000000);
     printf("ticks = %lu\n", HAL_GetTick());
   }
+}
 
   // ============ Activity LED ============ //
 {
@@ -76,6 +85,7 @@ int main()
     .Mode = GPIO_MODE_OUTPUT_PP,
     .Pin = (1 << 7),
   });
+  ACT_ON(); HAL_Delay(100); ACT_OFF(); HAL_Delay(100);
 }
 
   // ============ Pumps ============ //
@@ -185,7 +195,8 @@ int main()
     vrefint_value = (vrefint_value + 8) / 16;
     if (!vrefint_value) vrefint_value = 1;
     uint32_t vcc_mV = (1200 * 4096 / vrefint_value);
-    printf("Vrefint reading = %lu, Vcc = %lu mV\n", vrefint_value, vcc_mV);
+    printf("Vrefint reading = %lu, ", vrefint_value);
+    printf("Vcc = %lu mV\n", vcc_mV);
     if (vcc_mV <= 3000 || vcc_mV >= 3600) {
       for (int i = 0; i < 10; i++) {
         ACT_ON(); delay_us(100000);
@@ -312,12 +323,28 @@ int main()
   USART1->CR1 = (USART1->CR1 & ~(USART_CR1_TE | USART_CR1_RE)) | USART_CR1_RE;
 }
 
+  // ============ Watchdog ============ //
+{
+  __HAL_RCC_LSI_ENABLE();
+  while (!(RCC->CSR & RCC_CSR_LSIRDY)) { }
+
+  __HAL_DBGMCU_FREEZE_IWDG(); // Freeze IWDG when core stopped in debug mode
+  HAL_IWDG_Init(&(IWDG_HandleTypeDef){
+    .Instance = IWDG,
+    .Init = (IWDG_InitTypeDef){
+      .Prescaler = IWDG_PRESCALER_32, // 1 kHz
+      .Reload = 200,
+    },
+  });
+}
+
   while (1) {
     ACT_ON();
     for (int i = 0; i < 256; i++) {
       uint16_t l = i * 16;
       downstream_tx((uint8_t []){0x01, l >> 8, l & 0xff, 0x00, 0x00}, 5);
       delay_us(10000);
+      IWDG->KR = IWDG_KEY_RELOAD;
     }
   }
 
