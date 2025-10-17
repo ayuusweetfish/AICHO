@@ -39,7 +39,7 @@ static inline void delay_us(uint32_t us)
 #define PACKETS_INSTANCE_NAME serial
 #include "packets.h"
 
-static volatile uint8_t lights_type = 3;
+static volatile uint8_t lights_type = 0;
 static volatile uint16_t lights_intensity = 512, lights_progress = 0;
 
 #pragma GCC push_options
@@ -218,6 +218,13 @@ int main()
     uint16_t p = lights_progress;
     __enable_irq();
     switch (t) {
+    case 0: {
+      static uint32_t startup_time = 0;
+      startup_time = (startup_time + 10) % 8192;
+      gradient_Startup(startup_time, a);
+      send_lights_raw(LED_N_Startup, a);
+      break;
+    }
     case 1:
       gradient_Lorivox(l, a);
       send_lights_raw(LED_N_Lorivox, a);

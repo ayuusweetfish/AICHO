@@ -142,3 +142,15 @@ void gradient_Titanus(int intensity, uint8_t out[])
     LED_WRITE_I(i, blended);
   }
 }
+
+#define LED_N_Startup 120
+void gradient_Startup(int progress, uint8_t out[])
+{
+  for (int i = 0; i < LED_N_Startup; i++) {
+    int t = progress - i * 60;
+    if (t < 0) t = 0; else if (t >= 400) t = 400;
+    uint8_t intensity = (t < 200 ? t : 400 - t) / 20;
+    CRGB c = {.r = intensity, .g = intensity, .b = intensity};
+    LED_WRITE_I(i, c);
+  }
+}
