@@ -1,4 +1,5 @@
 // cc main.c serial.c -O2 && ./a.out /dev/serial/by-id/*
+// ./a.out /dev/ttyAMA3
 
 #include <stddef.h>
 #include <stdint.h>
@@ -54,7 +55,17 @@ int main(int argc, char *argv[])
     static uint32_t l = 0;
     l = (l + 32) % 4096;
     printf("intensity = %u\n", l);
-    tx(fd, (uint8_t []){0x01, l >> 8, l & 0xFF, 0x00, 0x00}, 5);
+    if (0) {
+      tx(fd, (uint8_t []){0x01, l >> 8, l & 0xFF, 0x00, 0x00}, 5);
+    } else {
+      tx(fd, (uint8_t []){0x10}, 1); usleep(3000000);
+      tx(fd, (uint8_t []){0xA1}, 1); usleep(3000000);
+      tx(fd, (uint8_t []){0xA2}, 1); usleep(3000000);
+      tx(fd, (uint8_t []){0xA1}, 1); usleep(3000000);
+      tx(fd, (uint8_t []){0xA2}, 1); usleep(3000000);
+      tx(fd, (uint8_t []){0xA1}, 1); usleep(3000000);
+      tx(fd, (uint8_t []){0xAF}, 1); usleep(9000000);
+    }
     usleep(20000);
 
     uint8_t a[64];

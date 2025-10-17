@@ -34,6 +34,14 @@ static inline void delay_us(uint32_t us)
 #define PACKETS_INSTANCE_NAME upstream
 #include "packets.h"
 
+typedef enum {
+  OP_INFLATE = (1 << 0),
+  OP_DRAIN = (1 << 1),
+  OP_FADE_OUT = (1 << 2),
+} op_t;
+static volatile op_t op_pending = 0;
+static int lane_index = -1;
+
 #pragma GCC push_options
 #pragma GCC optimize("O3")
 int main()
@@ -344,10 +352,16 @@ if (0) {
   });
 }
 
-  // Clear lights
-  downstream_tx((uint8_t []){0x01, 0x00, 0x00, 0x00, 0x00}, 5);
+  ACT_ON();
+  while (lane_index == -1) {
+    IWDG->KR = IWDG_KEY_RELOAD;
+    __WFI();
+  }
 
-  while (1) {
+  // Clear lights
+  downstream_tx((uint8_t []){0x01 + lane_index, 0x00, 0x00, 0x00, 0x00}, 5);
+
+  while (0) {
     ACT_ON();
     for (int i = 0; i < 256; i++) {
       uint16_t l = i * 16;
@@ -381,11 +395,7 @@ if (0) {
   } state = STATE_IDLE;
   int state_time = 0;
 
-  enum {
-    OP_INFLATE = (1 << 0),
-    OP_DRAIN = (1 << 1),
-    OP_FADE_OUT = (1 << 2),
-  } op = 0;
+  op_t op = 0;
 
   inline bool try_take_op(unsigned mask) {
     if ((op & mask) == mask) {
@@ -529,6 +539,7 @@ re_switch:
       progress >> 8, progress & 0xff,
     }, 5);
 
+  if (0) {
     // Operations simulation
     static int tt = 0;
     tt += 10;
@@ -539,6 +550,12 @@ re_switch:
     if (tt == 10000) op = OP_DRAIN;
     if (tt == 11000) op = OP_INFLATE;
     if (tt == 13000) op = OP_FADE_OUT;
+  }
+
+    __disable_irq();
+    op = op_pending;
+    op_pending = 0;
+    __enable_irq();
   }
 
   while (1) {
@@ -590,6 +607,15 @@ static inline uint32_t upstream_get_tick()
 
 static inline void upstream_rx_process_packet(uint8_t *packet, uint8_t n)
 {
+  if (n >= 1) {
+    if (lane_index == -1 && packet[0] >= 0x10 && packet[0] <= 0x13)
+      lane_index = packet[0] - 0x10;
+    if (packet[0] == 0xA1) op_pending |= OP_INFLATE;
+    if (packet[0] == 0xA2) op_pending |= OP_DRAIN;
+    if (packet[0] == 0xAF) op_pending |= OP_FADE_OUT;
+  }
+  // upstream_tx((uint8_t []){'o', 'k'}, 2);
+  HAL_GPIO_TogglePin(GPIOB, 1 << 7);
 }
 
 void NMI_Handler() { while (1) { } }
@@ -626,7 +652,7 @@ void SPI1_IRQHandler() { while (1) { } }
 void USART1_IRQHandler()
 {
   uint8_t x = USART1->DR;
-  HAL_GPIO_TogglePin(GPIOB, 1 << 7);
+  upstream_rx_process_byte(x);
 }
 
 void USART2_IRQHandler()
