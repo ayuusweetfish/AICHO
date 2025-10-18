@@ -76,11 +76,11 @@ int main(int argc, char *argv[])
       .INFLATE_TIME_LIMIT = 1800,
     },
     {
-      .PUMP_INFLATE_DUTY = 40,
-      .PUMP_DRAIN_DUTY = 25,
-      .PRESSURE_LIMIT = 9000,
-      .PRESSURE_BAIL = 9500,
-      .INFLATE_TIME_LIMIT = 1800,
+      .PUMP_INFLATE_DUTY = 0,
+      .PUMP_DRAIN_DUTY = 0,
+      .PRESSURE_LIMIT = 0,
+      .PRESSURE_BAIL = 0,
+      .INFLATE_TIME_LIMIT = 0,
     },
     {
       .PUMP_INFLATE_DUTY = 40,
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     },
   };
 
-      int index = 0;
+      int index = 1;
 
       tx(fd, (uint8_t []){
         0x10 + index,
