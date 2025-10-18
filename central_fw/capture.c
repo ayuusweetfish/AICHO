@@ -6,7 +6,9 @@
 
 #include "breath_detector.h"
 
+#include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static struct breath_detector d;
 
@@ -40,6 +42,7 @@ int main_capture(const char *device_name)
     ma_uint64 n_frames_written;
     if (ma_encoder_write_pcm_frames(&enc, input, n_frames, &n_frames_written) != MA_SUCCESS) {
       fprintf(stderr, "Error encoding\n");
+      exit(1);
     }
   }
 
@@ -79,7 +82,16 @@ int main_capture(const char *device_name)
   }
 
   printf("Writing recorded audio to %s\n", enc_file);
-  printf("Running. Press Enter to stop\n");
+  printf("Running. Press Enter or ^C to stop\n");
+
+  void sigint_handler(int n)
+  {
+    printf("Exiting\n");
+    ma_encoder_uninit(&enc);
+    exit(0);
+  }
+  signal(SIGINT, sigint_handler);
+
   getchar();
 
   ma_encoder_uninit(&enc);
