@@ -102,11 +102,13 @@ int main_file(const char *path)
   ma_uint64 n_frames_read;
   do {
     if (ma_decoder_read_pcm_frames(&dec, a, a_count, &n_frames_read) != MA_SUCCESS) {
-      fprintf(stderr, "Error during decoding\n");
+      fprintf(stderr, "Error decoding\n");
       return 1;
     }
     breath_detector_feed(&d, a, n_frames_read);
   } while (n_frames_read == a_count);
+
+  ma_decoder_uninit(&dec);
 
   return 0;
 }
