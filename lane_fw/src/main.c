@@ -217,10 +217,11 @@ int main()
     printf("Vrefint reading = %lu, ", vrefint_value);
     printf("Vcc = %lu mV\n", vcc_mV);
     if (vcc_mV <= 3000 || vcc_mV >= 3600) {
-      for (int i = 0; i < 10; i++) {
-        ACT_ON(); delay_us(100000);
-        ACT_OFF(); delay_us(100000);
+      for (int i = 0; i < 3; i++) {
+        ACT_ON(); delay_us(50000);
+        ACT_OFF(); delay_us(50000);
       }
+      HAL_Delay(500);
       HAL_NVIC_SystemReset();
     }
 
