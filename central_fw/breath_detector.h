@@ -86,11 +86,17 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
           sum += cplx_norm2(fft_result[j]);
         // putchar(sum >= 500 ? '*' : sum >= 100 ? '+' : sum >= 50 ? '.' : ' ');
       }
-      /* for (int i = 280; i < 640; i++) {
-        int32_t e = cplx_norm2(fft_result[i]) / 256;
+      bool stop = 0;
+      for (int i = 6; i < 640; i += 4) {
+        int32_t e = 0;
+        for (int j = 0; j < 10; j++) {
+          e += cplx_norm2(fft_result[i + j]) / 1024;
+        }
+        e /= 256;
         e = min(10, e);
+        // if (stop) e = 0; else if (e < 5) stop = 1;
         putchar(e == 0 ? ' ' : '0' + e);
-      } */
+      }
       putchar('|');
 
       int32_t energy_total = 0;
@@ -142,16 +148,7 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
         llabs(sum_hi - hi_ema) <= 500000
       );
 
-      bool pred = (
-        // (bins[10] / 256) >= 100;
-        (bins[20] / 256 >= 20) +
-        1 +
-        1 +
-        ((uint64_t)bins[40] * 10000 / (sum_mid + 1) >= 5) +
-        1 +
-        ((bins[10] - bins[20]) * 10 / (bins[30] - bins[50] + 1) <= 150) +
-        (llabs(sum_hi - hi_ema) <= 500000)
-      ) >= 7;
+      bool pred = 1;
       bool confidence = (
         1
       );
