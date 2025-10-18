@@ -10,14 +10,6 @@
 
 static struct breath_detector d;
 
-void input_cb(ma_device* dev, void *_output, const void *_input, ma_uint32 n_frames)
-{
-  const int16_t *input = (const int16_t *)_input;
-  // static int n = 0; if ((n += n_frames) >= 48000) { n -= 48000; puts("!"); }
-  breath_detector_feed(&d, input, n_frames);
-  (void)_output;
-}
-
 int main_capture(const char *device_name)
 {
   ma_context ctx;
@@ -35,6 +27,20 @@ int main_capture(const char *device_name)
     printf("Device: %s\n", in_dev_infos[i].name);
     if (device_name != NULL && strstr(in_dev_infos[i].name, device_name))
       sel_id = &in_dev_infos[i].id;
+  }
+
+  ma_encoder enc;
+
+  void input_cb(ma_device* dev, void *_output, const void *_input, ma_uint32 n_frames)
+  {
+    const int16_t *input = (const int16_t *)_input;
+    breath_detector_feed(&d, input, n_frames);
+    (void)_output;
+
+    ma_uint64 n_frames_written;
+    if (ma_encoder_write_pcm_frames(&enc, input, n_frames, &n_frames_written) != MA_SUCCESS) {
+      fprintf(stderr, "Error encoding\n");
+    }
   }
 
   ma_device_config dev_conf;
@@ -58,13 +64,25 @@ int main_capture(const char *device_name)
 
   breath_detector_init(&d);
 
+  const char *enc_file = "/dev/shm/1.wav";
+  ma_encoder_config enc_cfg = ma_encoder_config_init(
+    ma_encoding_format_wav, ma_format_s16, 1, 48000
+  );
+  if (ma_encoder_init_file(enc_file, &enc_cfg, &enc) != MA_SUCCESS) {
+    fprintf(stderr, "Cannot initialize encoder\n");
+    return 1;
+  }
+
   if (ma_device_start(&dev) != MA_SUCCESS) {
     fprintf(stderr, "Cannot start device\n");
     return 1;
   }
 
+  printf("Writing recorded audio to %s\n", enc_file);
   printf("Running. Press Enter to stop\n");
   getchar();
+
+  ma_encoder_uninit(&enc);
 
   return 0;
 }
