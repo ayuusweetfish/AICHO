@@ -412,6 +412,10 @@ if (0) {
   int state_start_intensity = 0;
   bool inflate_is_first = false;
 
+  const int base_progress = 2048;
+  int breath_rate;
+  int projected_phase = 0, eased_phase = 0;
+
   uint32_t tick = HAL_GetTick();
   while (1) {
     uint32_t pressure = read_adc();
@@ -442,19 +446,33 @@ re_switch:
     case STATE_IDLE: {
       if (try_take_op(OP_INFLATE)) {
         inflate_is_first = true;
+        projected_phase = eased_phase = base_progress;
+        breath_rate = 3000;
         reset_state(STATE_INFLATE);
       }
       if (try_take_op(OP_DRAIN)) reset_state(STATE_DRAIN);
 
-      intensity = 4096;
-      if (state_time < 4096) intensity = state_time;
+      intensity = 3072;
+      if (state_time < 3072) intensity = state_time;
+
+      progress = base_progress;
+      if (state_time < 2048)
+        // Quadratic ease
+        progress = (2048 * 2048 -
+          (2048 - state_time) * (2048 - state_time)) / 2048
+          * base_progress / 2048;
 
       TIM1->CCR4 = 0;
       TIM1->CCR3 = 0; TIM3->CCR1 = 0;
     } break;
 
     case STATE_INFLATE: {
-      if (try_take_op(OP_DRAIN)) reset_state(STATE_DRAIN);
+      if (try_take_op(OP_DRAIN)) {
+        breath_rate = (breath_rate * 8 + state_time * 8 / 2) / 16;
+        if (breath_rate < 1000) breath_rate = 1000;
+        projected_phase = (projected_phase & ~4095) + 4096;
+        reset_state(STATE_DRAIN);
+      }
       if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
 
       static bool stopped = false;
@@ -475,6 +493,20 @@ re_switch:
           if (intensity >= 4096) intensity = 4096;
         }
       }
+      projected_phase = (projected_phase & ~4095) +
+        (state_time >= breath_rate ? 4095 : state_time * 4095 / breath_rate);
+      if (inflate_is_first) projected_phase = 4095;
+      eased_phase = (eased_phase * 63 + projected_phase * 1) / 64;
+      if (0 && inflate_is_first && state_time < 1024) {
+        progress = (eased_phase * state_time
+          + base_progress * (1024 - state_time)) / 1024 % 8192;
+      } else if (0 && inflate_is_first && eased_phase < base_progress - 512) {
+        progress = base_progress;
+      } else if (0 && inflate_is_first && eased_phase < base_progress + 512) {
+        progress = base_progress + (eased_phase - base_progress + 512) / 2;
+      } else {
+        progress = eased_phase % 8192;
+      }
 
       uint32_t inflate_duty = 0;
       if (!stopped) {
@@ -490,6 +522,7 @@ re_switch:
     case STATE_DRAIN: {
       if (try_take_op(OP_INFLATE)) {
         inflate_is_first = false;
+        projected_phase = (projected_phase & ~4095) + 4096;
         reset_state(STATE_INFLATE);
       }
       if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
@@ -505,6 +538,10 @@ re_switch:
         intensity = 512 - (512 - intensity) / 2;
         if (intensity < 0) intensity = 0;
       }
+      projected_phase = (projected_phase & ~4095) +
+        (state_time >= breath_rate ? 4095 : state_time * 4095 / breath_rate);
+      eased_phase = (eased_phase * 63 + projected_phase * 1) / 64;
+      progress = eased_phase % 8192;
 
       uint32_t drain_duty = (!stopped ? 150 : 0);
       TIM1->CCR4 = 0;
@@ -516,6 +553,8 @@ re_switch:
 
       intensity = state_start_intensity - state_time * 3;
       if (intensity < 0) intensity = 0;
+      eased_phase = (eased_phase * 63 + projected_phase * 1) / 64;
+      progress = eased_phase % 8192;
 
       static int min_pressure = 0;
       if (state_time == 0) min_pressure = pressure;
@@ -534,7 +573,7 @@ re_switch:
     op = 0;
 
     downstream_tx((uint8_t []){
-      0x01,
+      0x01 + lane_index,
       intensity >> 8, intensity & 0xff,
       progress >> 8, progress & 0xff,
     }, 5);

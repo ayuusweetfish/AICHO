@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     if (0) {
       tx(fd, (uint8_t []){0x01, l >> 8, l & 0xFF, 0x00, 0x00}, 5);
     } else {
-      tx(fd, (uint8_t []){0x10}, 1); usleep(3000000);
+      tx(fd, (uint8_t []){0x11}, 1); usleep(3000000);
       tx(fd, (uint8_t []){0xA1}, 1); usleep(3000000);
       tx(fd, (uint8_t []){0xA2}, 1); usleep(3000000);
       tx(fd, (uint8_t []){0xA1}, 1); usleep(3000000);
