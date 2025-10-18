@@ -677,6 +677,7 @@ static inline void upstream_rx_process_packet(uint8_t *packet, uint8_t n)
     if (packet[0] == 0xA1) op_pending |= OP_INFLATE;
     if (packet[0] == 0xA2) op_pending |= OP_DRAIN;
     if (packet[0] == 0xAF) op_pending |= OP_FADE_OUT;
+    if (packet[0] == 0xCF) NVIC_SystemReset();
   }
   // upstream_tx((uint8_t []){'o', 'k'}, 2);
   HAL_GPIO_TogglePin(GPIOB, 1 << 7);

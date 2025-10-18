@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
   static const args_t args[4] = {
     {
       .PUMP_INFLATE_DUTY = 40,
-      .PUMP_DRAIN_DUTY = 25,
+      .PUMP_DRAIN_DUTY = 20,
       .PRESSURE_LIMIT = 9000,
       .PRESSURE_BAIL = 9500,
       .INFLATE_TIME_LIMIT = 1800,
@@ -83,23 +83,28 @@ int main(int argc, char *argv[])
       .INFLATE_TIME_LIMIT = 0,
     },
     {
-      .PUMP_INFLATE_DUTY = 40,
-      .PUMP_DRAIN_DUTY = 25,
-      .PRESSURE_LIMIT = 9000,
-      .PRESSURE_BAIL = 9500,
-      .INFLATE_TIME_LIMIT = 1800,
+      .PUMP_INFLATE_DUTY = 60,
+      .PUMP_DRAIN_DUTY = 40,
+      .PRESSURE_LIMIT = 6800,
+      .PRESSURE_BAIL = 7500,
+      .INFLATE_TIME_LIMIT = 2000,
     },
     {
-      .PUMP_INFLATE_DUTY = 40,
-      .PUMP_DRAIN_DUTY = 25,
-      .PRESSURE_LIMIT = 9000,
-      .PRESSURE_BAIL = 9500,
-      .INFLATE_TIME_LIMIT = 1800,
+      .PUMP_INFLATE_DUTY = 133,
+      .PUMP_DRAIN_DUTY = 200,
+      .PRESSURE_LIMIT = 7900,
+      .PRESSURE_BAIL = 8300,
+      .INFLATE_TIME_LIMIT = 2000,
     },
   };
 
-      int index = 1;
+      int index = 3;
 
+      static int first = 1;
+      if (first) {
+        tx(fd, (uint8_t []){0xCF}, 1); usleep(1000000);
+        first = 0;
+      }
       tx(fd, (uint8_t []){
         0x10 + index,
         args[index].PUMP_INFLATE_DUTY,
