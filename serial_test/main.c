@@ -58,7 +58,57 @@ int main(int argc, char *argv[])
     if (0) {
       tx(fd, (uint8_t []){0x01, l >> 8, l & 0xFF, 0x00, 0x00}, 5);
     } else {
-      tx(fd, (uint8_t []){0x11}, 1); usleep(3000000);
+
+  // test bladder: 150, 150, 7500, 8700, 2000
+  typedef struct {
+    int PUMP_INFLATE_DUTY;
+    int PUMP_DRAIN_DUTY;
+    int PRESSURE_LIMIT;
+    int PRESSURE_BAIL;
+    int INFLATE_TIME_LIMIT;
+  } args_t;
+  static const args_t args[4] = {
+    {
+      .PUMP_INFLATE_DUTY = 40,
+      .PUMP_DRAIN_DUTY = 25,
+      .PRESSURE_LIMIT = 9000,
+      .PRESSURE_BAIL = 9500,
+      .INFLATE_TIME_LIMIT = 1800,
+    },
+    {
+      .PUMP_INFLATE_DUTY = 40,
+      .PUMP_DRAIN_DUTY = 25,
+      .PRESSURE_LIMIT = 9000,
+      .PRESSURE_BAIL = 9500,
+      .INFLATE_TIME_LIMIT = 1800,
+    },
+    {
+      .PUMP_INFLATE_DUTY = 40,
+      .PUMP_DRAIN_DUTY = 25,
+      .PRESSURE_LIMIT = 9000,
+      .PRESSURE_BAIL = 9500,
+      .INFLATE_TIME_LIMIT = 1800,
+    },
+    {
+      .PUMP_INFLATE_DUTY = 40,
+      .PUMP_DRAIN_DUTY = 25,
+      .PRESSURE_LIMIT = 9000,
+      .PRESSURE_BAIL = 9500,
+      .INFLATE_TIME_LIMIT = 1800,
+    },
+  };
+
+      int index = 0;
+
+      tx(fd, (uint8_t []){
+        0x10 + index,
+        args[index].PUMP_INFLATE_DUTY,
+        args[index].PUMP_DRAIN_DUTY,
+        args[index].PRESSURE_LIMIT >> 8, args[index].PRESSURE_LIMIT & 0xff,
+        args[index].PRESSURE_BAIL >> 8, args[index].PRESSURE_BAIL & 0xff,
+        args[index].INFLATE_TIME_LIMIT >> 8, args[index].INFLATE_TIME_LIMIT & 0xff,
+      }, 9);
+      usleep(3000000);
       tx(fd, (uint8_t []){0xA1}, 1); usleep(3000000);
       tx(fd, (uint8_t []){0xA2}, 1); usleep(3000000);
       tx(fd, (uint8_t []){0xA1}, 1); usleep(3000000);

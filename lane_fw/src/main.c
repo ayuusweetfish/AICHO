@@ -41,6 +41,13 @@ typedef enum {
 } op_t;
 static volatile op_t op_pending = 0;
 static int lane_index = -1;
+static struct {
+  int PUMP_INFLATE_DUTY;
+  int PUMP_DRAIN_DUTY;
+  int PRESSURE_LIMIT;
+  int PRESSURE_BAIL;
+  int INFLATE_TIME_LIMIT;
+} args;
 
 #pragma GCC push_options
 #pragma GCC optimize("O3")
@@ -412,13 +419,6 @@ if (0)
   int state_start_intensity = 0;
   bool inflate_is_first = false;
 
-  // test bladder: 150, 150, 7500, 8700, 2000
-  const int PUMP_INFLATE_DUTY = 40;
-  const int PUMP_DRAIN_DUTY = 25;
-  const int PRESSURE_LIMIT = 9000;
-  const int PRESSURE_BAIL = 9500;
-  const int INFLATE_TIME_LIMIT = 1800;
-
   const int base_progress = 2048;
   int breath_rate;
   int projected_phase = 0, eased_phase = 0;
@@ -439,7 +439,7 @@ re_switch:
       goto re_switch; \
     } while (0)
 
-    if (pressure >= PRESSURE_BAIL) {
+    if (pressure >= args.PRESSURE_BAIL) {
       // Dangerous level. Open valve and wait for 5 seconds
       // Should not happen during normal operation
       TIM1->CCR4 = 0;
@@ -489,7 +489,7 @@ re_switch:
 
       static int time_stop;
       if (!stopped && (
-          state_time >= INFLATE_TIME_LIMIT || pressure >= PRESSURE_LIMIT)) {
+          state_time >= args.INFLATE_TIME_LIMIT || pressure >= args.PRESSURE_LIMIT)) {
         time_stop = state_time;
         stopped = true;
       }
@@ -520,10 +520,10 @@ re_switch:
 
       uint32_t inflate_duty = 0;
       if (!stopped) {
-        inflate_duty = PUMP_INFLATE_DUTY;
+        inflate_duty = args.PUMP_INFLATE_DUTY;
       } else {
-        if (state_time - time_stop < PUMP_INFLATE_DUTY * 5)
-          inflate_duty = PUMP_INFLATE_DUTY - (state_time - time_stop) / 5;
+        if (state_time - time_stop < args.PUMP_INFLATE_DUTY * 5)
+          inflate_duty = args.PUMP_INFLATE_DUTY - (state_time - time_stop) / 5;
       }
       TIM1->CCR4 = inflate_duty;
       TIM1->CCR3 = 0; TIM3->CCR1 = 0;
@@ -553,7 +553,7 @@ re_switch:
       eased_phase = (eased_phase * 63 + projected_phase * 1) / 64;
       progress = eased_phase % 8192;
 
-      uint32_t drain_duty = (!stopped ? PUMP_DRAIN_DUTY : 0);
+      uint32_t drain_duty = (!stopped ? args.PUMP_DRAIN_DUTY : 0);
       TIM1->CCR4 = 0;
       TIM1->CCR3 = drain_duty; TIM3->CCR1 = 160;
     } break;
@@ -571,7 +571,7 @@ re_switch:
       else if (pressure < min_pressure) min_pressure = pressure;
 
       TIM1->CCR4 = 0;
-      TIM1->CCR3 = (min_pressure >= 1000 ? PUMP_DRAIN_DUTY : 0);
+      TIM1->CCR3 = (min_pressure >= 1000 ? args.PUMP_DRAIN_DUTY : 0);
       TIM3->CCR1 = (min_pressure >= 500 ? 160 : 0);
     } break;
     }
@@ -656,9 +656,15 @@ static inline uint32_t upstream_get_tick()
 
 static inline void upstream_rx_process_packet(uint8_t *packet, uint8_t n)
 {
+  if (n >= 9 && lane_index == -1 && packet[0] >= 0x10 && packet[0] <= 0x13) {
+    lane_index = packet[0] - 0x10;
+    args.PUMP_INFLATE_DUTY = packet[1];
+    args.PUMP_DRAIN_DUTY = packet[2];
+    args.PRESSURE_LIMIT = ((int)packet[3] << 8) | packet[4];
+    args.PRESSURE_BAIL = ((int)packet[5] << 8) | packet[6];
+    args.INFLATE_TIME_LIMIT = ((int)packet[7] << 8) | packet[8];
+  }
   if (n >= 1) {
-    if (lane_index == -1 && packet[0] >= 0x10 && packet[0] <= 0x13)
-      lane_index = packet[0] - 0x10;
     if (packet[0] == 0xA1) op_pending |= OP_INFLATE;
     if (packet[0] == 0xA2) op_pending |= OP_DRAIN;
     if (packet[0] == 0xAF) op_pending |= OP_FADE_OUT;
