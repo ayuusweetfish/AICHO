@@ -379,6 +379,9 @@ if (0)
     __WFI();
   }
 
+  // Clear lights
+  downstream_tx((uint8_t []){0x01 + lane_index, 0x00, 0x00, 0x00, 0x00}, 5);
+
   void drain(unsigned reading) {
     uint32_t t0 = HAL_GetTick();
     TIM1->CCR3 = 150; TIM3->CCR1 = 160;
@@ -390,9 +393,6 @@ if (0)
     drain(500);
   else
     TIM3->CCR1 = 0;
-
-  // Clear lights
-  downstream_tx((uint8_t []){0x01 + lane_index, 0x00, 0x00, 0x00, 0x00}, 5);
 
   while (0) {
     ACT_ON();
