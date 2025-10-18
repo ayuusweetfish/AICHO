@@ -265,6 +265,11 @@ if (0) {
   }
 }
 
+  while (0) {
+    printf("%u\n", (unsigned)read_adc());
+    HAL_Delay(1000);
+  }
+
   // ============ RS-485 driver enable signal ============ //
   HAL_GPIO_WritePin(GPIOA, (1 << 6), 0);
   HAL_GPIO_Init(GPIOA, &(GPIO_InitTypeDef){
@@ -338,6 +343,7 @@ if (0) {
 }
 
   // ============ Watchdog ============ //
+if (0)
 {
   __HAL_RCC_LSI_ENABLE();
   while (!(RCC->CSR & RCC_CSR_LSIRDY)) { }
@@ -353,6 +359,16 @@ if (0) {
 }
 
   ACT_ON();
+
+  void drain(unsigned reading) {
+    uint32_t t0 = HAL_GetTick();
+    TIM1->CCR3 = 150; TIM3->CCR1 = 160;
+    while (read_adc() > reading && HAL_GetTick() - t0 < 5000)
+      IWDG->KR = IWDG_KEY_RELOAD;
+    TIM1->CCR3 = TIM3->CCR1 = 0;
+  }
+  drain(500);
+
   while (lane_index == -1) {
     IWDG->KR = IWDG_KEY_RELOAD;
     __WFI();
@@ -370,22 +386,6 @@ if (0) {
       IWDG->KR = IWDG_KEY_RELOAD;
     }
   }
-
-  void inflate(unsigned reading) {
-    uint32_t t0 = HAL_GetTick();
-    TIM1->CCR4 = 150;
-    while (read_adc() < reading && HAL_GetTick() - t0 < 2000)
-      IWDG->KR = IWDG_KEY_RELOAD;
-    TIM1->CCR4 = 0;
-  }
-  void drain(unsigned reading) {
-    uint32_t t0 = HAL_GetTick();
-    TIM1->CCR3 = 150; TIM3->CCR1 = 160;
-    while (read_adc() > reading && HAL_GetTick() - t0 < 5000)
-      IWDG->KR = IWDG_KEY_RELOAD;
-    TIM1->CCR3 = TIM3->CCR1 = 0;
-  }
-  drain(500);
 
   enum {
     STATE_IDLE,
@@ -412,6 +412,13 @@ if (0) {
   int state_start_intensity = 0;
   bool inflate_is_first = false;
 
+  // test bladder: 150, 150, 7500, 8700, 2000
+  const int PUMP_INFLATE_DUTY = 40;
+  const int PUMP_DRAIN_DUTY = 25;
+  const int PRESSURE_LIMIT = 9000;
+  const int PRESSURE_BAIL = 9500;
+  const int INFLATE_TIME_LIMIT = 1800;
+
   const int base_progress = 2048;
   int breath_rate;
   int projected_phase = 0, eased_phase = 0;
@@ -419,6 +426,7 @@ if (0) {
   uint32_t tick = HAL_GetTick();
   while (1) {
     uint32_t pressure = read_adc();
+    printf("%u\n", (unsigned)pressure);
 
 re_switch:
     #define reset_state(_s) do { \
@@ -431,12 +439,13 @@ re_switch:
       goto re_switch; \
     } while (0)
 
-    if (pressure >= 8700) {
+    if (pressure >= PRESSURE_BAIL) {
       // Dangerous level. Open valve and wait for 5 seconds
       // Should not happen during normal operation
       TIM1->CCR4 = 0;
       TIM1->CCR3 = 0; TIM3->CCR1 = 160;
       for (int i = 0; i < 500; i++) {
+        if (i % 5 == 0) HAL_GPIO_TogglePin(GPIOB, 1 << 7);
         HAL_Delay(10);
         IWDG->KR = IWDG_KEY_RELOAD;
       }
@@ -479,7 +488,8 @@ re_switch:
       if (state_time == 0) stopped = false;
 
       static int time_stop;
-      if (!stopped && (state_time >= 2000 || pressure >= 7500)) {
+      if (!stopped && (
+          state_time >= INFLATE_TIME_LIMIT || pressure >= PRESSURE_LIMIT)) {
         time_stop = state_time;
         stopped = true;
       }
@@ -510,10 +520,10 @@ re_switch:
 
       uint32_t inflate_duty = 0;
       if (!stopped) {
-        inflate_duty = 150;
+        inflate_duty = PUMP_INFLATE_DUTY;
       } else {
-        if (state_time - time_stop < 750)
-          inflate_duty = 150 - (state_time - time_stop) / 5;
+        if (state_time - time_stop < PUMP_INFLATE_DUTY * 5)
+          inflate_duty = PUMP_INFLATE_DUTY - (state_time - time_stop) / 5;
       }
       TIM1->CCR4 = inflate_duty;
       TIM1->CCR3 = 0; TIM3->CCR1 = 0;
@@ -543,7 +553,7 @@ re_switch:
       eased_phase = (eased_phase * 63 + projected_phase * 1) / 64;
       progress = eased_phase % 8192;
 
-      uint32_t drain_duty = (!stopped ? 150 : 0);
+      uint32_t drain_duty = (!stopped ? PUMP_DRAIN_DUTY : 0);
       TIM1->CCR4 = 0;
       TIM1->CCR3 = drain_duty; TIM3->CCR1 = 160;
     } break;
@@ -561,7 +571,7 @@ re_switch:
       else if (pressure < min_pressure) min_pressure = pressure;
 
       TIM1->CCR4 = 0;
-      TIM1->CCR3 = (min_pressure >= 1000 ? 150 : 0);
+      TIM1->CCR3 = (min_pressure >= 1000 ? PUMP_DRAIN_DUTY : 0);
       TIM3->CCR1 = (min_pressure >= 500 ? 160 : 0);
     } break;
     }
