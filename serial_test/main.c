@@ -100,26 +100,30 @@ int main(int argc, char *argv[])
 
       int index = 3;
 
-      static int first = 1;
-      if (first) {
+      static int n = 0;
+      n++;
+      if (n == 1) {
         tx(fd, (uint8_t []){0xCF}, 1); usleep(1000000);
-        first = 0;
+        tx(fd, (uint8_t []){
+          0x10 + index,
+          args[index].PUMP_INFLATE_DUTY,
+          args[index].PUMP_DRAIN_DUTY,
+          args[index].PRESSURE_LIMIT >> 8, args[index].PRESSURE_LIMIT & 0xff,
+          args[index].PRESSURE_BAIL >> 8, args[index].PRESSURE_BAIL & 0xff,
+          args[index].INFLATE_TIME_LIMIT >> 8, args[index].INFLATE_TIME_LIMIT & 0xff,
+        }, 9);
       }
-      tx(fd, (uint8_t []){
-        0x10 + index,
-        args[index].PUMP_INFLATE_DUTY,
-        args[index].PUMP_DRAIN_DUTY,
-        args[index].PRESSURE_LIMIT >> 8, args[index].PRESSURE_LIMIT & 0xff,
-        args[index].PRESSURE_BAIL >> 8, args[index].PRESSURE_BAIL & 0xff,
-        args[index].INFLATE_TIME_LIMIT >> 8, args[index].INFLATE_TIME_LIMIT & 0xff,
-      }, 9);
       usleep(3000000);
+      if (n % 2 == 0) {
+        tx(fd, (uint8_t []){0xAF}, 1); usleep(3000000);
+      }
       tx(fd, (uint8_t []){0xA1}, 1); usleep(3000000);
       tx(fd, (uint8_t []){0xA2}, 1); usleep(3000000);
       tx(fd, (uint8_t []){0xA1}, 1); usleep(3000000);
       tx(fd, (uint8_t []){0xA2}, 1); usleep(3000000);
       tx(fd, (uint8_t []){0xA1}, 1); usleep(3000000);
-      tx(fd, (uint8_t []){0xAF}, 1); usleep(9000000);
+      tx(fd, (uint8_t []){0xAF}, 1); usleep(3000000);
+      tx(fd, (uint8_t []){0xAE}, 1); usleep(6000000);
     }
     usleep(20000);
 

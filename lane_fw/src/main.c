@@ -38,6 +38,7 @@ typedef enum {
   OP_INFLATE = (1 << 0),
   OP_DRAIN = (1 << 1),
   OP_FADE_OUT = (1 << 2),
+  OP_APPEAR = (1 << 3),
 } op_t;
 static volatile op_t op_pending = 0;
 static int lane_index = -1;
@@ -437,17 +438,6 @@ if (0)
     uint32_t pressure = args.HAS_PUMPS ? read_adc() : 0;
     printf("%u\n", (unsigned)pressure);
 
-re_switch:
-    #define reset_state(_s) do { \
-      state = (_s); state_time = 0; \
-      state_start_intensity = intensity; \
-      goto re_switch; \
-    } while (0)
-    #define reset_state_cont(_s) do { \
-      state = (_s); \
-      goto re_switch; \
-    } while (0)
-
     if (args.HAS_PUMPS && pressure >= args.PRESSURE_BAIL) {
       // Dangerous level. Open valve and wait for 5 seconds
       // Should not happen during normal operation
@@ -459,6 +449,13 @@ re_switch:
         IWDG->KR = IWDG_KEY_RELOAD;
       }
     }
+
+re_switch:
+    #define reset_state(_s) do { \
+      state = (_s); state_time = 0; \
+      state_start_intensity = intensity; \
+      goto re_switch; \
+    } while (0)
 
     uint32_t inflate_duty = 0;
     uint32_t drain_duty = 0;
@@ -473,6 +470,7 @@ re_switch:
         reset_state(STATE_INFLATE);
       }
       if (try_take_op(OP_DRAIN)) reset_state(STATE_DRAIN);
+      if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
 
       intensity = 3072;
       if (state_time < 3072) intensity = state_time;
@@ -509,7 +507,13 @@ re_switch:
       }
 
       if (inflate_is_first) {
-        intensity = 4096;
+        if (state_time < 1024) {
+          intensity = state_start_intensity +
+            (uint32_t)(4096 - state_start_intensity) *
+              (uint32_t)(state_time * state_time) / (1024 * 1024);
+        } else {
+          intensity = 4096;
+        }
       } else {
         intensity = state_start_intensity + state_time * 2;
         if (intensity >= 3072) {
@@ -521,16 +525,7 @@ re_switch:
         (state_time >= breath_rate ? 4095 : state_time * 4095 / breath_rate);
       if (inflate_is_first) projected_phase = 4095;
       eased_phase = (eased_phase * 63 + projected_phase * 1) / 64;
-      if (0 && inflate_is_first && state_time < 1024) {
-        progress = (eased_phase * state_time
-          + base_progress * (1024 - state_time)) / 1024 % 8192;
-      } else if (0 && inflate_is_first && eased_phase < base_progress - 512) {
-        progress = base_progress;
-      } else if (0 && inflate_is_first && eased_phase < base_progress + 512) {
-        progress = base_progress + (eased_phase - base_progress + 512) / 2;
-      } else {
-        progress = eased_phase % 8192;
-      }
+      progress = eased_phase % 8192;
 
       inflate_duty = 0;
       if (!stopped) {
@@ -573,7 +568,9 @@ re_switch:
     } break;
 
     case STATE_FADE_OUT: {
-      if (state_time >= 2000) reset_state(STATE_IDLE);
+      if (try_take_op(OP_APPEAR)) reset_state(STATE_IDLE);
+      if (op & OP_INFLATE) reset_state(STATE_IDLE);
+        // Fallthrough; initialization will be handled by STATE_IDLE
 
       intensity = state_start_intensity - state_time * 3;
       if (intensity < 0) intensity = 0;
@@ -677,6 +674,7 @@ static inline void upstream_rx_process_packet(uint8_t *packet, uint8_t n)
     if (packet[0] == 0xA1) op_pending |= OP_INFLATE;
     if (packet[0] == 0xA2) op_pending |= OP_DRAIN;
     if (packet[0] == 0xAF) op_pending |= OP_FADE_OUT;
+    if (packet[0] == 0xAE) op_pending |= OP_APPEAR;
     if (packet[0] == 0xCF) NVIC_SystemReset();
   }
   // upstream_tx((uint8_t []){'o', 'k'}, 2);
