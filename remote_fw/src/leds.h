@@ -68,7 +68,7 @@ static inline CRGB CRGB_blend(CRGB a, CRGB b, uint8_t t)
   };
 }
 
-#define LED_N_Lorivox 23
+#define LED_N_Lorivox 37
 void gradient_Lorivox(int intensity, uint8_t out[])
 {
   for (int i = 0; i < LED_N_Lorivox; i++) {

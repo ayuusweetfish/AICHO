@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     },
   };
 
-      int index = 3;
+      int index = 0;
 
       static int n = 0;
       n++;
