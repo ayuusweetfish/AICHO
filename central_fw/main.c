@@ -1,7 +1,7 @@
 // cc -O2 -DMINIAUDIO_IMPLEMENTATION -c -x c miniaudio.h
 // make -C kissfft KISSFFT_DATATYPE=int32_t KISSFFT_STATIC=1
 
-// cc main.c keyboard.c serial.c microphone.c miniaudio.o -Ikissfft kissfft/libkissfft-int32_t.a -lm -o /dev/shm/a.out && /dev/shm/a.out
+// cc main.c keyboard.c serial.c microphone.c sfx.c miniaudio.o -Ikissfft kissfft/libkissfft-int32_t.a -lm -o /dev/shm/a.out && /dev/shm/a.out
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -14,6 +14,7 @@ void serial_start(const char *devices[], int n_devices);
 void serial_tx(int index, const uint8_t *buf, int len);
 void microphone_start(const char *device_name);
 bool microphone_breath_state(void);
+void sfx_start(const char *device_name);
 
 typedef struct {
   int PUMP_INFLATE_DUTY;
@@ -113,7 +114,9 @@ int main()
     keyboard_update(cb);
   }
 
-  microphone_start("Mono");
+  microphone_start("(Unitek Y-247A) Mono");
+
+  sfx_start("(Unitek Y-247A) Analog Stereo");
 
   puts("Entering loop");
 

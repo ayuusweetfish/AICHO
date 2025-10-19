@@ -32,7 +32,7 @@ void microphone_start(const char *device_name)
 
   const ma_device_id *sel_id = NULL;
   for (int i = 0; i < n_in_devs; i++) {
-    printf("Device: %s\n", in_dev_infos[i].name);
+    printf("Input device: %s\n", in_dev_infos[i].name);
     if (device_name != NULL && strstr(in_dev_infos[i].name, device_name))
       sel_id = &in_dev_infos[i].id;
   }
