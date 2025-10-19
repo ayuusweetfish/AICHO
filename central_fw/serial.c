@@ -126,7 +126,7 @@ void serial_start(const char *devices[], int n_devices)
   }
 }
 
-void serial_tx(int index, const void *buf, int len)
+void serial_tx(int index, const uint8_t *buf, int len)
 {
   tx(fds[index], buf, len);
 }
