@@ -1,9 +1,8 @@
-// gcc -O2 -DMINIAUDIO_IMPLEMENTATION -c -x c miniaudio.h
-// make -C kissfft KISSFFT_DATATYPE=int32_t KISSFFT_STATIC=1
-// gcc -std=c99 capture.c miniaudio.o -Ikissfft kissfft/libkissfft-int32_t.a -lm
+// gcc -std=c99 capture.c ../central_fw/miniaudio.o -I../central_fw -I../central_fw/kissfft ../central_fw/kissfft/libkissfft-int32_t.a -lm
 
 #include "miniaudio.h"
 
+#define debug(...) printf(__VA_ARGS__)
 #include "breath_detector.h"
 
 #include <signal.h>
