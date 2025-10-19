@@ -3,6 +3,7 @@
 
 // cc main.c keyboard.c serial.c microphone.c miniaudio.o -Ikissfft kissfft/libkissfft-int32_t.a -lm -o /dev/shm/a.out && /dev/shm/a.out
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -12,6 +13,7 @@ void keyboard_update(void (*callback)(int));
 void serial_start(const char *devices[], int n_devices);
 void serial_tx(int index, const uint8_t *buf, int len);
 void microphone_start(const char *device_name);
+bool microphone_breath_state(void);
 
 typedef struct {
   int PUMP_INFLATE_DUTY;
@@ -101,7 +103,7 @@ int main()
     void keyboard_callback(int n) {
       if (n >= 16 && n <= 19) printf("%d\n", n);
     }
-    keyboard_update(keyboard_callback);
+    puts(microphone_breath_state() ? "#" : ".");
     usleep(10000);
   }
 

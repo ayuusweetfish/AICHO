@@ -15,13 +15,18 @@ struct breath_detector {
   int32_t buf[BREATH_DET_WINDOW_SIZE];
   uint32_t buf_ptr;
 
-  bool is_exhale;
+  int ban_counter;
+  int out_counter;
+  bool last_out;
 };
 
 static void breath_detector_init(struct breath_detector *d)
 {
   d->buf_ptr = 0;
-  d->is_exhale = false;
+
+  d->ban_counter = 0;
+  d->out_counter = 0;
+  d->last_out = false;
 }
 
 #define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
@@ -67,7 +72,7 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
          (uint32_t)((int32_t)(_x).i * (_x).i))
 
       float T = (float)(count++) * (BREATH_DET_WINDOW_SIZE / 2) / 48000;
-      printf("(%4d) %6.2f |", count, T);
+      debug("(%4d) %6.2f |", count, T);
 
       uint64_t sum = 0;
       for (int i = 6; i < 1280; i++)
@@ -82,7 +87,7 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
         if (e > min_e) unsmooth += (e - min_e) * i;
         else if (e < min_e) min_e -= (min_e - e) / 2;
       }
-      printf("%10u |", (unsigned)(unsmooth / sum));
+      debug("%10u |", (unsigned)(unsmooth / sum));
       bool smooth_det = (unsmooth / sum <= 500);
 
       uint64_t low_sum = 0;
@@ -97,75 +102,42 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
           if ((low_tol -= e) <= 0) break;
         }
       }
-      printf("%10u %3d |", (unsigned)(low_sum / 100), low_cont);
+      debug("%10u %3d |", (unsigned)(low_sum / 100), low_cont);
       bool low_det_1 = low_sum >= 1000 * 100;
       bool low_det_2 = low_cont >= 15;
 
-      printf(" %c %c %c |", smooth_det ? '#' : ' ', low_det_1 ? '*' : ' ', low_det_2 ? '*' : ' ');
+      debug(" %c %c %c |", smooth_det ? '#' : ' ', low_det_1 ? '*' : ' ', low_det_2 ? '*' : ' ');
       bool final_det = (smooth_det && (low_det_1 || low_det_2));
 
-      static int ban_counter = 0;
       if (!smooth_det) {
-        ban_counter += 5;
-        if (ban_counter >= 10) ban_counter = 10;
+        d->ban_counter += 5;
+        if (d->ban_counter >= 10) d->ban_counter = 10;
       }
 
-      static int counter = 0;
-      static bool last_out = false;
-      if (ban_counter > 0) ban_counter--;
-      if (ban_counter <= 2) {
-        if (final_det && counter < 4) counter++;
-        else if (!final_det && counter > 0) counter--;
-        if (!last_out && counter >= 3) last_out = true;
-        else if (last_out && counter < 2) last_out = false;
+      if (d->ban_counter > 0) d->ban_counter--;
+      if (d->ban_counter <= 2) {
+        if (final_det && d->out_counter < 4) d->out_counter++;
+        else if (!final_det && d->out_counter > 0) d->out_counter--;
+        if (!d->last_out && d->out_counter >= 3) d->last_out = true;
+        else if (d->last_out && d->out_counter < 2) d->last_out = false;
       } else {
-        counter = 0;
-        last_out = false;
+        d->out_counter = 0;
+        d->last_out = false;
       }
-      bool hyst_det = last_out;
+      bool hyst_det = d->last_out;
 
-      printf(" %c %c %c |", final_det ? '!' : ' ', ban_counter <= 2 ? ' ' : 'x', hyst_det ? '!' : ' ');
+      debug(" %c %c %c |", final_det ? '!' : ' ', d->ban_counter <= 2 ? ' ' : 'x', hyst_det ? '!' : ' ');
 
-    /*
-      static uint32_t bins[BREATH_DET_WINDOW_SIZE / 2][2];
-      int bins_n = 0;
-      for (int i = 6; i < 1280; i += 20) {
-        uint32_t e = 0;
-        for (int j = 0; j < 240; j++) {
-          e += cplx_norm2(fft_result[i + j]);
-        }
-        bins[bins_n][0] = e;
-        bins[bins_n][1] = bins_n;
-        bins_n++;
-      }
-      int uint32_2x_compare_desc(const void *_a, const void *_b)
-      {
-        uint32_t a = *(const uint32_t *)_a;
-        uint32_t b = *(const uint32_t *)_b;
-        return (a < b ? 1 : a > b ? -1 : 0);
-      }
-      qsort(bins, bins_n, sizeof(uint32_t) * 2, uint32_2x_compare_desc);
-      for (int i = 0; i < 25; i++) printf(" %3d", bins[i][1]);
-    */
-
-    if (1)
       for (int i = 6; i < 80; i += 1) {
         uint32_t e = 0;
         for (int j = 0; j < 1; j++) {
           e += cplx_norm2(fft_result[i + j]);
         }
         e = min(10, e / 2);
-        putchar(e == 0 ? ' ' : '0' + e);
+        debug("%c", e == 0 ? ' ' : '0' + e);
       }
-      putchar('|');
-
-      printf("\n");
+      debug("\n");
       if (d->buf_ptr == BREATH_DET_WINDOW_SIZE) d->buf_ptr = 0;
     }
   }
-}
-
-static bool breath_detector_is_exhale(const struct breath_detector *d)
-{
-  return d->is_exhale;
 }
