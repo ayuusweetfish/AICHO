@@ -1,4 +1,7 @@
-// cc main.c keyboard.c serial.c /dev/shm/a.out && /dev/shm/a.out
+// cc -O2 -DMINIAUDIO_IMPLEMENTATION -c -x c miniaudio.h
+// make -C kissfft KISSFFT_DATATYPE=int32_t KISSFFT_STATIC=1
+
+// cc main.c keyboard.c serial.c microphone.c miniaudio.o -Ikissfft kissfft/libkissfft-int32_t.a -lm -o /dev/shm/a.out && /dev/shm/a.out
 
 #include <stdio.h>
 #include <stdint.h>
@@ -8,6 +11,7 @@ void keyboard_start(void);
 void keyboard_update(void (*callback)(int));
 void serial_start(const char *devices[], int n_devices);
 void serial_tx(int index, const uint8_t *buf, int len);
+void microphone_start(const char *device_name);
 
 typedef struct {
   int PUMP_INFLATE_DUTY;
@@ -90,7 +94,10 @@ int main()
     "/dev/ttyS3",
   }, 4);
 
-  while (0) {
+  microphone_start("Mono");
+
+  puts("Entering loop");
+  while (1) {
     void keyboard_callback(int n) {
       if (n >= 16 && n <= 19) printf("%d\n", n);
     }
