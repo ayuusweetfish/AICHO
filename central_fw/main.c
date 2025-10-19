@@ -15,6 +15,8 @@ void serial_tx(int index, const uint8_t *buf, int len);
 void microphone_start(const char *device_name);
 bool microphone_breath_state(void);
 void sfx_start(const char *device_name);
+void sfx_load(const char *path);
+void sfx_play(int index);
 
 typedef struct {
   int PUMP_INFLATE_DUTY;
@@ -89,9 +91,25 @@ static void lane_reappear(int index)
 static const int SOUND_ENSEMBLE = 4;
 static const int SOUND_INHALE = 0;
 static const int SOUND_EXHALE = 1;
+static void load_sounds()
+{
+  const char *names[] = {
+    "Lorivox", "Lumisonic", "Harmonia", "Titanus", "Ensemble",
+  };
+  const char *directions[] = {
+    "Inhale", "Exhale",
+  };
+  for (int i = 0; i <= 4; i++) {
+    for (int j = 0; j <= 1; j++) {
+      char path[64];
+      snprintf(path, sizeof path, "sfx/%02d_%s_%s.wav", i, names[i], directions[j]);
+      sfx_load(path);
+    }
+  }
+}
 static void play_sound(int index, int direction)
 {
-  printf("Sound %d %d\n", index, direction);
+  sfx_play(index * 2 + direction);
 }
 
 int main()
@@ -117,6 +135,7 @@ int main()
   microphone_start("(Unitek Y-247A) Mono");
 
   sfx_start("(Unitek Y-247A) Analog Stereo");
+  load_sounds();
 
   puts("Entering loop");
 

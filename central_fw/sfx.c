@@ -58,3 +58,16 @@ void sfx_start(const char *device_name)
     exit(1);
   }
 }
+
+static int n_sounds = 0;
+
+void sfx_load(const char *path)
+{
+  printf("Loading sound %s (%d)\n", path, n_sounds);
+  n_sounds++;
+}
+
+void sfx_play(int index)
+{
+  printf("Sound play %d\n", index);
+}
