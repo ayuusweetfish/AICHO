@@ -63,42 +63,52 @@ int main(int argc, char *argv[])
   typedef struct {
     int PUMP_INFLATE_DUTY;
     int PUMP_DRAIN_DUTY;
+    int VALVE_DUTY;
     int PRESSURE_LIMIT;
     int PRESSURE_BAIL;
     int INFLATE_TIME_LIMIT;
+    int DRAIN_LOW_LIMIT;
   } args_t;
   static const args_t args[4] = {
     {
       .PUMP_INFLATE_DUTY = 40,
       .PUMP_DRAIN_DUTY = 20,
+      .VALVE_DUTY = 160,
       .PRESSURE_LIMIT = 9000,
       .PRESSURE_BAIL = 9500,
       .INFLATE_TIME_LIMIT = 1800,
+      .DRAIN_LOW_LIMIT = 500,
     },
     {
       .PUMP_INFLATE_DUTY = 0,
       .PUMP_DRAIN_DUTY = 0,
+      .VALVE_DUTY = 160,
       .PRESSURE_LIMIT = 0,
       .PRESSURE_BAIL = 0,
       .INFLATE_TIME_LIMIT = 0,
+      .DRAIN_LOW_LIMIT = 500,
     },
     {
-      .PUMP_INFLATE_DUTY = 60,
-      .PUMP_DRAIN_DUTY = 40,
-      .PRESSURE_LIMIT = 6800,
-      .PRESSURE_BAIL = 7500,
+      .PUMP_INFLATE_DUTY = 120,
+      .PUMP_DRAIN_DUTY = 80,
+      .VALVE_DUTY = 160,
+      .PRESSURE_LIMIT = 12000,
+      .PRESSURE_BAIL = 13500,
       .INFLATE_TIME_LIMIT = 2000,
+      .DRAIN_LOW_LIMIT = 500,
     },
     {
-      .PUMP_INFLATE_DUTY = 133,
+      .PUMP_INFLATE_DUTY = 150,
       .PUMP_DRAIN_DUTY = 200,
-      .PRESSURE_LIMIT = 7900,
-      .PRESSURE_BAIL = 8300,
+      .VALVE_DUTY = 160,
+      .PRESSURE_LIMIT = 14000,
+      .PRESSURE_BAIL = 15500,
       .INFLATE_TIME_LIMIT = 2000,
+      .DRAIN_LOW_LIMIT = 500,
     },
   };
 
-      int index = 0;
+      int index = 3;
 
       static int n = 0;
       n++;
@@ -108,10 +118,12 @@ int main(int argc, char *argv[])
           0x10 + index,
           args[index].PUMP_INFLATE_DUTY,
           args[index].PUMP_DRAIN_DUTY,
+          args[index].VALVE_DUTY,
           args[index].PRESSURE_LIMIT >> 8, args[index].PRESSURE_LIMIT & 0xff,
           args[index].PRESSURE_BAIL >> 8, args[index].PRESSURE_BAIL & 0xff,
           args[index].INFLATE_TIME_LIMIT >> 8, args[index].INFLATE_TIME_LIMIT & 0xff,
-        }, 9);
+          args[index].DRAIN_LOW_LIMIT >> 8, args[index].DRAIN_LOW_LIMIT & 0xff,
+        }, 12);
       }
       usleep(3000000);
       if (n % 2 == 0) {
