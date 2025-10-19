@@ -98,13 +98,13 @@ int main(int argc, char *argv[])
       .DRAIN_LOW_LIMIT = 500,
     },
     {
-      .PUMP_INFLATE_DUTY = 150,
+      .PUMP_INFLATE_DUTY = 180,
       .PUMP_DRAIN_DUTY = 200,
       .VALVE_DUTY = 160,
-      .PRESSURE_LIMIT = 14000,
-      .PRESSURE_BAIL = 15500,
+      .PRESSURE_LIMIT = 16000,
+      .PRESSURE_BAIL = 20000,
       .INFLATE_TIME_LIMIT = 2000,
-      .DRAIN_LOW_LIMIT = 500,
+      .DRAIN_LOW_LIMIT = 0,
     },
   };
 
