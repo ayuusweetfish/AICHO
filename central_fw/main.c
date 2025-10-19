@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include <unistd.h>
 
-void keyboard_start(void (*callback)(int));
+void keyboard_start(void);
+void keyboard_update(void (*callback)(int));
 void serial_start(const char *devices[], int n_devices);
 void serial_tx(int index, const uint8_t *buf, int len);
 
@@ -15,7 +16,7 @@ void keyboard_callback(int n)
 
 int main()
 {
-  keyboard_start(keyboard_callback);
+  keyboard_start();
 
   serial_start((const char *[4]){
     "/dev/ttyS2",
@@ -23,6 +24,11 @@ int main()
     "/dev/ttyS5",
     "/dev/ttyS3",
   }, 4);
+
+  while (1) {
+    keyboard_update(keyboard_callback);
+    usleep(10000);
+  }
 
   typedef struct {
     int PUMP_INFLATE_DUTY;
@@ -33,10 +39,10 @@ int main()
   } args_t;
   static const args_t args[4] = {
     {
-      .PUMP_INFLATE_DUTY = 40,
+      .PUMP_INFLATE_DUTY = 60,
       .PUMP_DRAIN_DUTY = 20,
-      .PRESSURE_LIMIT = 9000,
-      .PRESSURE_BAIL = 9500,
+      .PRESSURE_LIMIT = 11500,
+      .PRESSURE_BAIL = 12000,
       .INFLATE_TIME_LIMIT = 1800,
     },
     {
@@ -47,28 +53,28 @@ int main()
       .INFLATE_TIME_LIMIT = 0,
     },
     {
-      .PUMP_INFLATE_DUTY = 60,
-      .PUMP_DRAIN_DUTY = 40,
-      .PRESSURE_LIMIT = 6800,
-      .PRESSURE_BAIL = 7500,
+      .PUMP_INFLATE_DUTY = 100,
+      .PUMP_DRAIN_DUTY = 120,
+      .PRESSURE_LIMIT = 13000,
+      .PRESSURE_BAIL = 14000,
       .INFLATE_TIME_LIMIT = 2000,
     },
     {
-      .PUMP_INFLATE_DUTY = 133,
+      .PUMP_INFLATE_DUTY = 150,
       .PUMP_DRAIN_DUTY = 200,
-      .PRESSURE_LIMIT = 7900,
-      .PRESSURE_BAIL = 8300,
+      .PRESSURE_LIMIT = 15000,
+      .PRESSURE_BAIL = 16000,
       .INFLATE_TIME_LIMIT = 2000,
     },
   };
 
-  int index = 1;
+  int index = 3;
 
   while (1) {
     static int n = 0;
     n++;
     if (n == 1) {
-      serial_tx(index, (uint8_t []){0xCF}, 1); usleep(1000000);
+      serial_tx(index, (uint8_t []){0xCF}, 1); usleep(1500000);
       serial_tx(index, (uint8_t []){
         0x10 + index,
         args[index].PUMP_INFLATE_DUTY,
@@ -78,17 +84,16 @@ int main()
         args[index].INFLATE_TIME_LIMIT >> 8, args[index].INFLATE_TIME_LIMIT & 0xff,
       }, 9);
     }
-    usleep(3000000);
     if (n % 2 == 0) {
-      serial_tx(index, (uint8_t []){0xAF}, 1); usleep(3000000);
+      getchar(); serial_tx(index, (uint8_t []){0xAF}, 1);
     }
-    serial_tx(index, (uint8_t []){0xA1}, 1); usleep(3000000);
-    serial_tx(index, (uint8_t []){0xA2}, 1); usleep(3000000);
-    serial_tx(index, (uint8_t []){0xA1}, 1); usleep(3000000);
-    serial_tx(index, (uint8_t []){0xA2}, 1); usleep(3000000);
-    serial_tx(index, (uint8_t []){0xA1}, 1); usleep(3000000);
-    serial_tx(index, (uint8_t []){0xAF}, 1); usleep(3000000);
-    serial_tx(index, (uint8_t []){0xAE}, 1); usleep(6000000);
+    getchar(); serial_tx(index, (uint8_t []){0xA1}, 1);
+    getchar(); serial_tx(index, (uint8_t []){0xA2}, 1);
+    getchar(); serial_tx(index, (uint8_t []){0xA1}, 1);
+    getchar(); serial_tx(index, (uint8_t []){0xA2}, 1);
+    getchar(); serial_tx(index, (uint8_t []){0xA1}, 1);
+    getchar(); serial_tx(index, (uint8_t []){0xAF}, 1);
+    getchar(); serial_tx(index, (uint8_t []){0xAE}, 1);
   }
 
   while (1) usleep(1000000), puts("!");
