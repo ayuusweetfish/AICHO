@@ -32,8 +32,7 @@ static inline int16_t sat_add(int16_t a, int16_t b)
 static void output_cb(ma_device* dev, void *_output, const void *_input, ma_uint32 n_frames)
 {
   int16_t *output = (int16_t *)_output;
-
-  memset(output, 0, n_frames * 2 * sizeof(int16_t));
+  // Output buffer is pre-silenced by default
 
   pthread_mutex_lock(&ch_lock);
   for (int c = 0; c < sizeof ch / sizeof ch[0]; c++) if (ch[c].index != -1) {
