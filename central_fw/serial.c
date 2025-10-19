@@ -109,7 +109,7 @@ static void tx(int fd, const uint8_t *buf, uint8_t len)
   }
   assert(serial_write(fd, (uint8_t []){0xAA}, 1) == 1);
 
-  printf("> [%2u]", (unsigned)len);
+  printf("> %2u [%2u]", fd, (unsigned)len);
   for (int i = 0; i < len; i++) printf(" %02x", (unsigned)buf[i]);
   printf(" |");
   for (int i = 0; i < 4; i++) printf(" %02x", (unsigned)s8[i]);

@@ -87,30 +87,116 @@ static void lane_reappear(int index)
 
 int main()
 {
-  keyboard_start();
-
   serial_start((const char *[4]){
     "/dev/ttyS2",
     "/dev/ttyS1",
     "/dev/ttyS5",
     "/dev/ttyS3",
   }, 4);
+if (0)
+  goto test;
+
+  for (int i = 0; i < 4; i++) lane_reset(i);
+  usleep(1500000);
+  for (int i = 0; i < 4; i++) lane_initiate(i);
+
+  keyboard_start();
+  void clear_keyboard_queue() {
+    void cb(int n) { }
+    keyboard_update(cb);
+  }
 
   microphone_start("Mono");
 
   puts("Entering loop");
+
+  enum {
+    STATE_IDLE,
+    STATE_BREATHE,
+  } state = STATE_IDLE;
+
+  int act_organism = 0;
+
+  int since_last_exhale = 0;  // Milliseconds
+  int exhale_total_time = 0;
+  int exhale_interval = 0;
+  int exhale_count = 0;
+
+  static const int LOOP_INTERVAL = 10;
+
+  #define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
+  #define max(_a, _b) ((_a) > (_b) ? (_a) : (_b))
+
   while (1) {
-    void keyboard_callback(int n) {
-      if (n >= 16 && n <= 19) printf("%d\n", n);
+    bool is_exhale = microphone_breath_state();
+
+    if (state == STATE_IDLE) {
+      // Get keypresses
+      int keypress = -1;
+      void keyboard_callback(int n) {
+        if (n >= 16 && n <= 19) keypress = n - 16;
+      }
+      keyboard_update(keyboard_callback);
+      if (keypress >= 0) {
+        for (int i = 0; i < 4; i++) {
+          if (i == keypress) lane_inflate(i);
+          else lane_fade_out(i);
+        }
+        act_organism = keypress;
+        since_last_exhale = 0;
+        exhale_total_time = 0;
+        exhale_interval = 6000;
+        exhale_count = 0;
+        state = STATE_BREATHE;
+      }
+
+    } else if (state == STATE_BREATHE) {
+      since_last_exhale += LOOP_INTERVAL;
+      exhale_total_time += LOOP_INTERVAL;
+
+      // Starting from the 3-rd inhale, ensemble performance is guaranteed
+      // Exhale (drain) signals at faded-out state are ignored by lane controller
+      bool ensemble = (exhale_total_time >= 15000 || exhale_count >= 3);
+
+      if (exhale_count > 0 &&
+          since_last_exhale >= exhale_interval / 2 &&
+          since_last_exhale - LOOP_INTERVAL < exhale_interval / 2) {
+        // Inhale
+        for (int i = 0; i < 4; i++)
+          if (i == act_organism || ensemble) lane_inflate(i);
+      }
+
+      if (microphone_breath_state() &&
+          (exhale_count == 0 ||
+           since_last_exhale > exhale_interval * 9 / 16)) {
+        // Exhale
+        exhale_interval += (
+          min(since_last_exhale, exhale_interval * 2) - exhale_interval) / 2;
+        exhale_interval = max(4000, min(10000, exhale_interval));
+        if (exhale_count == 0) exhale_total_time = 0;
+          // So that total time represents time since start of performance
+        exhale_count += 1;
+        since_last_exhale = 0;
+        for (int i = 0; i < 4; i++)
+          if (i == act_organism || ensemble) lane_drain(i);
+
+      } else if (since_last_exhale >= 15000) {
+        for (int i = 0; i < 4; i++) lane_fade_out(i);
+        usleep(4000 * 1000);
+        for (int i = 0; i < 4; i++) lane_reappear(i);
+        state = STATE_IDLE;
+        usleep(4000 * 1000);
+        clear_keyboard_queue();
+      }
+
     }
-    keyboard_update(keyboard_callback);
-    puts(microphone_breath_state() ? "#" : ".");
-    usleep(10000);
+
+    usleep(LOOP_INTERVAL * 1000);
   }
 
-  int index = 3;
-
+test:
   while (1) {
+    int index = 3;
     static int n = 0;
     n++;
     if (n == 1) {
