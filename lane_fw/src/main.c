@@ -45,9 +45,11 @@ static int lane_index = -1;
 static struct {
   int PUMP_INFLATE_DUTY;
   int PUMP_DRAIN_DUTY;
+  int VALVE_DUTY;
   int PRESSURE_LIMIT;
   int PRESSURE_BAIL;
   int INFLATE_TIME_LIMIT;
+  int DRAIN_LOW_LIMIT;
 
   bool HAS_PUMPS;
 } args;
@@ -372,7 +374,7 @@ if (0)
   ACT_ON();
 
   uint32_t t_valve_start = HAL_GetTick();
-  TIM3->CCR1 = 160;
+  TIM3->CCR1 = 200;
 
   while (lane_index == -1) {
     IWDG->KR = IWDG_KEY_RELOAD;
@@ -385,13 +387,15 @@ if (0)
 
   void drain(unsigned reading) {
     uint32_t t0 = HAL_GetTick();
-    TIM1->CCR3 = 150; TIM3->CCR1 = 160;
+    TIM1->CCR4 = 0;
+    TIM1->CCR3 = args.PUMP_DRAIN_DUTY;
+    TIM3->CCR1 = args.VALVE_DUTY;
     while (read_adc() > reading && HAL_GetTick() - t0 < 5000)
       IWDG->KR = IWDG_KEY_RELOAD;
     TIM1->CCR3 = TIM3->CCR1 = 0;
   }
   if (args.HAS_PUMPS)
-    drain(500);
+    drain(args.DRAIN_LOW_LIMIT);
   else
     TIM3->CCR1 = 0;
 
@@ -443,7 +447,7 @@ if (0)
       // Dangerous level. Open valve and wait for 5 seconds
       // Should not happen during normal operation
       TIM1->CCR4 = 0;
-      TIM1->CCR3 = 0; TIM3->CCR1 = 160;
+      TIM1->CCR3 = 0; TIM3->CCR1 = args.VALVE_DUTY;
       for (int i = 0; i < 500; i++) {
         if (i % 5 == 0) HAL_GPIO_TogglePin(GPIOB, 1 << 7);
         HAL_Delay(10);
@@ -583,15 +587,16 @@ re_switch:
       else if (pressure < min_pressure) min_pressure = pressure;
 
       inflate_duty = 0;
-      drain_duty = (min_pressure >= 1000 ? args.PUMP_DRAIN_DUTY : 0);
-      valve_act = (min_pressure >= 500);
+      drain_duty =
+        (min_pressure >= args.DRAIN_LOW_LIMIT * 2 ? args.PUMP_DRAIN_DUTY : 0);
+      valve_act = (min_pressure >= args.DRAIN_LOW_LIMIT);
     } break;
     }
 
     if (args.HAS_PUMPS) {
       TIM1->CCR4 = inflate_duty;
       TIM1->CCR3 = drain_duty;
-      TIM3->CCR1 = valve_act ? 160 : 0;
+      TIM3->CCR1 = valve_act ? args.VALVE_DUTY : 0;
     }
 
     if (state_time < 60000) state_time += 10;
@@ -662,13 +667,15 @@ static inline uint32_t upstream_get_tick()
 
 static inline void upstream_rx_process_packet(uint8_t *packet, uint8_t n)
 {
-  if (n >= 9 && lane_index == -1 && packet[0] >= 0x10 && packet[0] <= 0x13) {
+  if (n >= 12 && lane_index == -1 && packet[0] >= 0x10 && packet[0] <= 0x13) {
     lane_index = packet[0] - 0x10;
     args.PUMP_INFLATE_DUTY = packet[1];
     args.PUMP_DRAIN_DUTY = packet[2];
-    args.PRESSURE_LIMIT = ((int)packet[3] << 8) | packet[4];
-    args.PRESSURE_BAIL = ((int)packet[5] << 8) | packet[6];
-    args.INFLATE_TIME_LIMIT = ((int)packet[7] << 8) | packet[8];
+    args.VALVE_DUTY = packet[3];
+    args.PRESSURE_LIMIT = ((int)packet[4] << 8) | packet[5];
+    args.PRESSURE_BAIL = ((int)packet[6] << 8) | packet[7];
+    args.INFLATE_TIME_LIMIT = ((int)packet[8] << 8) | packet[9];
+    args.DRAIN_LOW_LIMIT = ((int)packet[10] << 8) | packet[11];
     args.HAS_PUMPS = (packet[1] != 0);
   }
   if (n >= 1) {
