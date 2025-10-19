@@ -2,13 +2,14 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/input.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-bool is_keyboard(const char *device)
+static bool is_keyboard(const char *device)
 {
   int fd = open(device, O_RDONLY);
   if (fd == -1) return false;
@@ -20,18 +21,29 @@ bool is_keyboard(const char *device)
   return (ev & (1 << EV_KEY));
 }
 
-void monitor_keyboard(const int *fds, int n_fds)
+struct monitor_args_t {
+  const int *fds;
+  int n_fds;
+  void (*callback)(int);
+};
+
+static void *monitor_keyboard_loop(void *_args)
 {
+  struct monitor_args_t *args = _args;
+  const int *fds = args->fds;
+  int n_fds = args->n_fds;
+  void (*callback)(int) = args->callback;
+  free(args);
+
   struct input_event ev;
 
   while (1) {
-    bool again = false;
+    bool has_read = false;
     // XXX: We can use poll()
     for (int i = 0; i < n_fds; i++) {
       ssize_t n = read(fds[i], &ev, sizeof ev);
       if (n == -1) {
         if (errno == EAGAIN) {
-          again = true;
           continue;
         } else {
           perror("read");
@@ -39,10 +51,28 @@ void monitor_keyboard(const int *fds, int n_fds)
         }
       }
       if (n == sizeof ev && ev.type == EV_KEY && ev.value == 1) {
-        printf("+%d %d\n", fds[i], ev.code);
+        has_read = true;
+        callback(ev.code);
       }
     }
-    if (again) usleep(100000);
+    if (!has_read) usleep(10000);
+  }
+
+  return NULL;
+}
+
+static void monitor_keyboard(const int *fds, int n_fds, void (*callback)(int))
+{
+  pthread_t thr;
+  struct monitor_args_t *args = malloc(sizeof(struct monitor_args_t));
+  *args = (struct monitor_args_t){
+    .fds = fds,
+    .n_fds = n_fds,
+    .callback = callback,
+  };
+  if (pthread_create(&thr, NULL, monitor_keyboard_loop, args) != 0) {
+    perror("pthread_create");
+    exit(1);
   }
 }
 
@@ -76,7 +106,10 @@ int main()
 
   closedir(dir);
 
-  monitor_keyboard(fds, n_fds);
+  void f(int n) { if (n >= 16 && n <= 19) printf("%d\n", n); }
+  monitor_keyboard(fds, n_fds, f);
+
+  while (1) usleep(1000000), puts("!");
 
   return 0;
 }
