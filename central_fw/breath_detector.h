@@ -3,6 +3,7 @@
 #define FIXED_POINT 32
 #include "kiss_fftr.h"  // kiss_fft-131.1.0
 
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -17,7 +18,7 @@ struct breath_detector {
 
   int ban_counter;
   int out_counter;
-  bool last_out;
+  _Atomic bool last_out;
 };
 
 static void breath_detector_init(struct breath_detector *d)

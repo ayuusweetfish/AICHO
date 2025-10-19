@@ -8,14 +8,11 @@
 #include <stdlib.h>
 
 static struct breath_detector d;
-static pthread_mutex_t lock;
 
 static void input_cb(ma_device* dev, void *_output, const void *_input, ma_uint32 n_frames)
 {
   const int16_t *input = (const int16_t *)_input;
-  pthread_mutex_lock(&lock);
   breath_detector_feed(&d, input, n_frames);
-  pthread_mutex_unlock(&lock);
   (void)_output;
 }
 
@@ -60,8 +57,6 @@ void microphone_start(const char *device_name)
 
   breath_detector_init(&d);
 
-  pthread_mutex_init(&lock, NULL);
-
   if (ma_device_start(&dev) != MA_SUCCESS) {
     fprintf(stderr, "Cannot start device\n");
     exit(1);
@@ -70,8 +65,5 @@ void microphone_start(const char *device_name)
 
 bool microphone_breath_state(void)
 {
-  pthread_mutex_lock(&lock);
-  bool result = d.last_out;
-  pthread_mutex_unlock(&lock);
-  return result;
+  return d.last_out;
 }
