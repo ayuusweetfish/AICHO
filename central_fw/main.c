@@ -85,6 +85,14 @@ static void lane_reappear(int index)
   serial_tx(index, (uint8_t []){0xAE}, 1);
 }
 
+static const int SOUND_ENSEMBLE = 4;
+static const int SOUND_INHALE = 0;
+static const int SOUND_EXHALE = 1;
+static void play_sound(int index, int direction)
+{
+  printf("Sound %d %d\n", index, direction);
+}
+
 int main()
 {
   serial_start((const char *[4]){
@@ -149,6 +157,7 @@ int main()
         exhale_count = 0;
         ensemble_inhaled = false;
         state = STATE_BREATHE;
+        play_sound(act_organism, SOUND_INHALE);
         usleep(1000 * 1000);
       }
 
@@ -163,9 +172,14 @@ int main()
           since_last_exhale >= exhale_interval / 2 &&
           since_last_exhale - LOOP_INTERVAL < exhale_interval / 2) {
         // Inhale
-        for (int i = 0; i < 4; i++)
-          if (i == act_organism || ensemble) lane_inflate(i);
-        if (ensemble) ensemble_inhaled = true;
+        if (ensemble) {
+          for (int i = 0; i < 4; i++) lane_inflate(i);
+          ensemble_inhaled = true;
+          play_sound(SOUND_ENSEMBLE, SOUND_INHALE);
+        } else {
+          lane_inflate(act_organism);
+          play_sound(act_organism, SOUND_INHALE);
+        }
       }
 
       if (microphone_breath_state() &&
@@ -179,10 +193,14 @@ int main()
           // So that total time represents time since start of performance
         exhale_count += 1;
         since_last_exhale = 0;
-        for (int i = 0; i < 4; i++)
-          if (i == act_organism || (ensemble && ensemble_inhaled))
-            // First ensemble action should be inhalation
-            lane_drain(i);
+        if (ensemble && ensemble_inhaled) {
+          // First ensemble action should be inhalation
+          for (int i = 0; i < 4; i++) lane_drain(i);
+          play_sound(SOUND_ENSEMBLE, SOUND_EXHALE);
+        } else {
+          lane_drain(act_organism);
+          play_sound(act_organism, SOUND_EXHALE);
+        }
 
       } else if (since_last_exhale >= 15000) {
         for (int i = 0; i < 4; i++) lane_fade_out(i);
