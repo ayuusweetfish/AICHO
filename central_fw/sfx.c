@@ -1,5 +1,7 @@
 #include "miniaudio.h"
 
+#include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,13 +15,44 @@ static struct sound_t {
   int n_frames;
 } sounds[16];
 
+static struct channel_t {
+  int index;
+  int ptr;
+} ch[8];
+static pthread_mutex_t ch_lock;
+
+static inline int16_t sat_add(int16_t a, int16_t b)
+{
+  int32_t sum = (int32_t)a + (int32_t)b;
+  if (sum > INT16_MAX) sum = INT16_MAX;
+  if (sum < INT16_MIN) sum = INT16_MIN;
+  return sum;
+}
+
 static void output_cb(ma_device* dev, void *_output, const void *_input, ma_uint32 n_frames)
 {
   int16_t *output = (int16_t *)_output;
-  for (int i = 0; i < n_frames; i++) {
-    output[i * 2 + 0] = rand() % 512 - 256;
-    output[i * 2 + 1] = rand() % 512 - 256;
+
+  memset(output, 0, n_frames * 2 * sizeof(int16_t));
+
+  pthread_mutex_lock(&ch_lock);
+  for (int c = 0; c < sizeof ch / sizeof ch[0]; c++) if (ch[c].index != -1) {
+    int index = ch[c].index;
+    int n = n_frames;
+    int ptr = ch[c].ptr;
+    if (n > sounds[index].n_frames - ptr)
+      n = sounds[index].n_frames - ptr;
+    const int16_t *buf = sounds[index].buf;
+    for (int i = 0; i < n; i++) {
+      output[i * 2 + 0] = sat_add(output[i * 2 + 0], buf[ptr + i * 2 + 0]);
+      output[i * 2 + 1] = sat_add(output[i * 2 + 1], buf[ptr + i * 2 + 1]);
+    }
+    if ((ch[c].ptr += n) == sounds[index].n_frames) {
+      ch[c].index = -1;
+    }
   }
+  pthread_mutex_unlock(&ch_lock);
+
   (void)_input;
 }
 
@@ -59,6 +92,10 @@ void sfx_start(const char *device_name)
   ma_device_get_name(&dev, ma_device_type_playback, name, sizeof name, NULL);
   printf("Selected device: %s\n", name);
 
+  pthread_mutex_init(&ch_lock, NULL);
+  for (int i = 0; i < sizeof ch / sizeof ch[0]; i++)
+    ch[i].index = -1;
+
   if (ma_device_start(&dev) != MA_SUCCESS) {
     fprintf(stderr, "Cannot start device\n");
     exit(1);
@@ -92,6 +129,8 @@ void sfx_load(const char *path)
   }
 
   printf("- Length: %u frames\n", (unsigned)n_frames);
+
+  // No need to lock here...
   sounds[n_sounds] = (struct sound_t){
     .buf = buf,
     .n_frames = n_frames,
@@ -102,4 +141,11 @@ void sfx_load(const char *path)
 void sfx_play(int index)
 {
   printf("Sound play %d\n", index);
+  pthread_mutex_lock(&ch_lock);
+  for (int i = 0; i < sizeof ch / sizeof ch[0]; i++) if (ch[i].index == -1) {
+    ch[i].index = index;
+    ch[i].ptr = 0;
+    break;
+  }
+  pthread_mutex_unlock(&ch_lock);
 }
