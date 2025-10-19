@@ -7,6 +7,12 @@
 static ma_context ctx;
 static ma_device dev;
 
+static int n_sounds = 0;
+static struct sound_t {
+  int16_t *buf;
+  int n_frames;
+} sounds[16];
+
 static void output_cb(ma_device* dev, void *_output, const void *_input, ma_uint32 n_frames)
 {
   int16_t *output = (int16_t *)_output;
@@ -59,11 +65,37 @@ void sfx_start(const char *device_name)
   }
 }
 
-static int n_sounds = 0;
-
 void sfx_load(const char *path)
 {
   printf("Loading sound %s (%d)\n", path, n_sounds);
+
+  ma_decoder dec;
+  ma_decoder_config dec_cfg = ma_decoder_config_init(ma_format_s16, 1, 48000);
+  if (ma_decoder_init_file(path, &dec_cfg, &dec) != MA_SUCCESS) {
+    fprintf(stderr, "Cannot decode file %s\n", path);
+    exit(1);
+  }
+
+  ma_uint64 n_frames;
+  if (ma_decoder_get_length_in_pcm_frames(&dec, &n_frames) != MA_SUCCESS) {
+    fprintf(stderr, "Cannot get audio length of %s\n", path);
+    exit(1);
+  }
+
+  int16_t *buf = malloc(sizeof(int16_t) * 2 * n_frames);
+
+  ma_uint64 n_frames_read;
+  if (ma_decoder_read_pcm_frames(&dec, buf, n_frames, &n_frames_read) != MA_SUCCESS
+      || n_frames_read != n_frames) {
+    fprintf(stderr, "Error decoding file %s\n", path);
+    exit(1);
+  }
+
+  printf("- Length: %u frames\n", (unsigned)n_frames);
+  sounds[n_sounds] = (struct sound_t){
+    .buf = buf,
+    .n_frames = n_frames,
+  };
   n_sounds++;
 }
 
