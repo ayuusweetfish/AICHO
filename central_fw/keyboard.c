@@ -57,22 +57,20 @@ void keyboard_update(void (*callback)(int))
 {
   struct input_event ev;
 
-  while (1) {
-    // XXX: We can use poll()
-    for (int i = 0; i < n_fds; i++) {
-      while (1) {
-        ssize_t n = read(fds[i], &ev, sizeof ev);
-        if (n == -1) {
-          if (errno == EAGAIN) {
-            break;
-          } else {
-            perror("read");
-            exit(1);
-          }
+  // XXX: We can use poll()
+  for (int i = 0; i < n_fds; i++) {
+    while (1) {
+      ssize_t n = read(fds[i], &ev, sizeof ev);
+      if (n == -1) {
+        if (errno == EAGAIN) {
+          break;
+        } else {
+          perror("read");
+          exit(1);
         }
-        if (n == sizeof ev && ev.type == EV_KEY && ev.value == 1) {
-          callback(ev.code);
-        }
+      }
+      if (n == sizeof ev && ev.type == EV_KEY && ev.value == 1) {
+        callback(ev.code);
       }
     }
   }

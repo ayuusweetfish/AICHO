@@ -103,6 +103,7 @@ int main()
     void keyboard_callback(int n) {
       if (n >= 16 && n <= 19) printf("%d\n", n);
     }
+    keyboard_update(keyboard_callback);
     puts(microphone_breath_state() ? "#" : ".");
     usleep(10000);
   }
