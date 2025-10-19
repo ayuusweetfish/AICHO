@@ -36,6 +36,10 @@ void microphone_start(const char *device_name)
     if (device_name != NULL && strstr(in_dev_infos[i].name, device_name))
       sel_id = &in_dev_infos[i].id;
   }
+  if (sel_id == NULL) {
+    fprintf(stderr, "No device selected!\n");
+    exit(1);
+  }
 
   ma_device_config dev_conf;
 
