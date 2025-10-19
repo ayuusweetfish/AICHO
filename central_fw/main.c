@@ -88,13 +88,12 @@ static void lane_reappear(int index)
 int main()
 {
   serial_start((const char *[4]){
-    "/dev/ttyS2",
-    "/dev/ttyS1",
-    "/dev/ttyS5",
-    "/dev/ttyS3",
+    "/dev/ttyS2", // PI9,10
+    "/dev/ttyS1", // PI5,6
+    "/dev/ttyS5", // PH2,3
+    "/dev/ttyS3", // PI13,14
   }, 4);
-if (0)
-  goto test;
+  if (0) goto test;
 
   for (int i = 0; i < 4; i++) lane_reset(i);
   usleep(1500000);
@@ -121,6 +120,7 @@ if (0)
   int exhale_total_time = 0;
   int exhale_interval = 0;
   int exhale_count = 0;
+  bool ensemble_inhaled = false;
 
   static const int LOOP_INTERVAL = 10;
 
@@ -147,7 +147,9 @@ if (0)
         exhale_total_time = 0;
         exhale_interval = 6000;
         exhale_count = 0;
+        ensemble_inhaled = false;
         state = STATE_BREATHE;
+        usleep(1000 * 1000);
       }
 
     } else if (state == STATE_BREATHE) {
@@ -155,7 +157,6 @@ if (0)
       exhale_total_time += LOOP_INTERVAL;
 
       // Starting from the 3-rd inhale, ensemble performance is guaranteed
-      // Exhale (drain) signals at faded-out state are ignored by lane controller
       bool ensemble = (exhale_total_time >= 15000 || exhale_count >= 3);
 
       if (exhale_count > 0 &&
@@ -164,6 +165,7 @@ if (0)
         // Inhale
         for (int i = 0; i < 4; i++)
           if (i == act_organism || ensemble) lane_inflate(i);
+        if (ensemble) ensemble_inhaled = true;
       }
 
       if (microphone_breath_state() &&
@@ -178,7 +180,9 @@ if (0)
         exhale_count += 1;
         since_last_exhale = 0;
         for (int i = 0; i < 4; i++)
-          if (i == act_organism || ensemble) lane_drain(i);
+          if (i == act_organism || (ensemble && ensemble_inhaled))
+            // First ensemble action should be inhalation
+            lane_drain(i);
 
       } else if (since_last_exhale >= 15000) {
         for (int i = 0; i < 4; i++) lane_fade_out(i);
