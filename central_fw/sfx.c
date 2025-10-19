@@ -1,5 +1,6 @@
 #include "miniaudio.h"
 
+#include <math.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -132,6 +133,17 @@ void sfx_load(const char *path)
   }
 
   printf("- Length: %u frames\n", (unsigned)n_frames);
+
+  // Post-processing: gain & fade-out
+  for (int i = 0; i < n_frames; i++) {
+    float gain = 0.25;
+    if (n_frames - i < 192000) {
+      float x = (n_frames - i) / 192000.f;
+      gain *= x * expf(3 * x) / expf(3);
+    }
+    buf[i * 2 + 0] = (int16_t)roundf(buf[i * 2 + 0] * gain);
+    buf[i * 2 + 1] = (int16_t)roundf(buf[i * 2 + 1] * gain);
+  }
 
   // No need to lock here...
   sounds[n_sounds] = (struct sound_t){
