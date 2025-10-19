@@ -65,8 +65,10 @@ static void monitor_keyboard(const int *fds, int n_fds, void (*callback)(int))
 {
   pthread_t thr;
   struct monitor_args_t *args = malloc(sizeof(struct monitor_args_t));
+  int *fds_clone = malloc(sizeof(int) * n_fds);
+  memcpy(fds_clone, fds, sizeof(int) * n_fds);
   *args = (struct monitor_args_t){
-    .fds = fds,
+    .fds = fds_clone,
     .n_fds = n_fds,
     .callback = callback,
   };
@@ -76,7 +78,7 @@ static void monitor_keyboard(const int *fds, int n_fds, void (*callback)(int))
   }
 }
 
-int main()
+void keyboard_start(void (*callback)(int))
 {
   DIR *dir = opendir("/dev/input");
   if (dir == NULL) {
@@ -106,10 +108,5 @@ int main()
 
   closedir(dir);
 
-  void f(int n) { if (n >= 16 && n <= 19) printf("%d\n", n); }
-  monitor_keyboard(fds, n_fds, f);
-
-  while (1) usleep(1000000), puts("!");
-
-  return 0;
+  monitor_keyboard(fds, n_fds, callback);
 }
