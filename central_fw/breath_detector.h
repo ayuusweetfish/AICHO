@@ -71,19 +71,23 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
       #define cplx_norm2(_x) \
         ((uint32_t)((int32_t)(_x).r * (_x).r) + \
          (uint32_t)((int32_t)(_x).i * (_x).i))
+      static uint32_t energy[BREATH_DET_WINDOW_SIZE / 2 + 1];
+      for (int i = 0; i <= BREATH_DET_WINDOW_SIZE / 2; i++)
+        energy[i] = cplx_norm2(fft_result[i]);
+      #undef cplx_norm2
 
       float T = (float)(count++) * (BREATH_DET_WINDOW_SIZE / 2) / 48000;
       debug("(%4d) %6.2f |", count, T);
 
       uint64_t sum = 0;
       for (int i = 6; i < 1280; i++)
-        sum += cplx_norm2(fft_result[i]) + 1;
+        sum += energy[i] + 1;
       uint64_t unsmooth = 0;
       uint32_t min_e = 0;
       for (int i = 6; i < 1280; i += 5) {
         uint32_t e = 0;
         for (int j = 0; j < 60; j++) {
-          e += cplx_norm2(fft_result[i + j]);
+          e += energy[i + j];
         }
         if (e > min_e) unsmooth += (e - min_e) * i;
         else if (e < min_e) min_e -= (min_e - e) / 2;
@@ -93,11 +97,11 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
 
       uint64_t low_sum = 0;
       for (int i = 6; i < 20; i++)
-        low_sum += cplx_norm2(fft_result[i]);
+        low_sum += energy[i];
 
       int low_cont, low_tol = 25;
       for (low_cont = 6; low_cont < 17; low_cont++) {
-        uint32_t e = cplx_norm2(fft_result[low_cont]);
+        uint32_t e = energy[low_cont];
         if (e < 10) {
           e = 10 - e;
           if ((low_tol -= e) <= 0) break;
@@ -132,7 +136,7 @@ static void breath_detector_feed(struct breath_detector *restrict d, const int16
       for (int i = 6; i < 80; i += 1) {
         uint32_t e = 0;
         for (int j = 0; j < 1; j++) {
-          e += cplx_norm2(fft_result[i + j]);
+          e += energy[i + j];
         }
         e = min(10, e / 2);
         debug("%c", e == 0 ? ' ' : '0' + e);
