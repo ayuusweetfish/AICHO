@@ -132,9 +132,9 @@ int main()
     keyboard_update(cb);
   }
 
-  microphone_start("(Unitek Y-247A) Mono");
+  microphone_start("USB Audio");
 
-  sfx_start("(Unitek Y-247A) Analog Stereo");
+  sfx_start("USB Audio");
   load_sounds();
 
   puts("Entering loop");
