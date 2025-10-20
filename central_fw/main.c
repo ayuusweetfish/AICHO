@@ -21,38 +21,48 @@ void sfx_play(int index);
 typedef struct {
   int PUMP_INFLATE_DUTY;
   int PUMP_DRAIN_DUTY;
+  int VALVE_DUTY;
   int PRESSURE_LIMIT;
   int PRESSURE_BAIL;
   int INFLATE_TIME_LIMIT;
+  int DRAIN_RATE;
 } args_t;
 static const args_t args[4] = {
   {
     .PUMP_INFLATE_DUTY = 60,
     .PUMP_DRAIN_DUTY = 20,
+    .VALVE_DUTY = 160,
     .PRESSURE_LIMIT = 11500,
     .PRESSURE_BAIL = 12000,
     .INFLATE_TIME_LIMIT = 1800,
+    .DRAIN_RATE = 2000,
   },
   {
     .PUMP_INFLATE_DUTY = 0,
     .PUMP_DRAIN_DUTY = 0,
+    .VALVE_DUTY = 0,
     .PRESSURE_LIMIT = 0,
     .PRESSURE_BAIL = 0,
     .INFLATE_TIME_LIMIT = 0,
+    .DRAIN_RATE = 0,
   },
   {
     .PUMP_INFLATE_DUTY = 100,
     .PUMP_DRAIN_DUTY = 120,
+    .VALVE_DUTY = 195,
     .PRESSURE_LIMIT = 13000,
     .PRESSURE_BAIL = 14000,
     .INFLATE_TIME_LIMIT = 2000,
+    .DRAIN_RATE = 2000,
   },
   {
     .PUMP_INFLATE_DUTY = 150,
     .PUMP_DRAIN_DUTY = 200,
-    .PRESSURE_LIMIT = 15000,
-    .PRESSURE_BAIL = 16000,
+    .VALVE_DUTY = 160,
+    .PRESSURE_LIMIT = 17000,
+    .PRESSURE_BAIL = 17800,
     .INFLATE_TIME_LIMIT = 2000,
+    .DRAIN_RATE = 2000,
   },
 };
 
@@ -66,10 +76,12 @@ static void lane_initiate(int index)
     0x10 + index,
     args[index].PUMP_INFLATE_DUTY,
     args[index].PUMP_DRAIN_DUTY,
+    args[index].VALVE_DUTY,
     args[index].PRESSURE_LIMIT >> 8, args[index].PRESSURE_LIMIT & 0xff,
     args[index].PRESSURE_BAIL >> 8, args[index].PRESSURE_BAIL & 0xff,
     args[index].INFLATE_TIME_LIMIT >> 8, args[index].INFLATE_TIME_LIMIT & 0xff,
-  }, 9);
+    args[index].DRAIN_RATE >> 8, args[index].DRAIN_RATE & 0xff,
+  }, 12);
 }
 static void lane_inflate(int index)
 {
@@ -123,7 +135,7 @@ int main()
   if (0) goto test;
 
   for (int i = 0; i < 4; i++) lane_reset(i);
-  usleep(1500000);
+  usleep(2000000);
   for (int i = 0; i < 4; i++) lane_initiate(i);
 
   keyboard_start();
