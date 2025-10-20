@@ -376,6 +376,7 @@ if (0)
   uint32_t t_valve_start = HAL_GetTick();
   TIM3->CCR1 = 200;
 
+if (0)
   while (lane_index == -1) {
     IWDG->KR = IWDG_KEY_RELOAD;
     if (HAL_GetTick() - t_valve_start >= 5000) TIM3->CCR1 = 0;
@@ -392,43 +393,42 @@ if (0)
     delay_us(100);
     TIM1->CCR3 = args.PUMP_DRAIN_DUTY;
     uint32_t t[64], n = 0;
-    while ((t[n] = read_adc()) > reading && HAL_GetTick() - t0 < 5000) {
+    while (read_adc() > reading && HAL_GetTick() - t0 < 5000)
       IWDG->KR = IWDG_KEY_RELOAD;
-      if (n < 63) n++;
-    }
-  /*
     TIM1->CCR3 = TIM3->CCR1 = 0;
-    for (int i = 0; i < 8; i++) {
-      HAL_Delay(20);
-      if (n < 63) n++;
-      t[n] = read_adc();
-      IWDG->KR = IWDG_KEY_RELOAD;
-    }
-    for (int i = 0; i <= n; i++) printf("%4u%c", (unsigned)t[i], i % 8 == 7 || i == n ? '\n' : ' ');
-  */
   }
 
-/*
+if (0) {
   TIM1->CCR4 = 100;
   TIM3->CCR1 = 0;
-  for (int i = 0; i < 200; i++) {
+  for (int i = 0; i < 100; i++) {
     HAL_Delay(10);
     IWDG->KR = IWDG_KEY_RELOAD;
   }
   TIM1->CCR4 = 0;
-  for (int i = 0; i < 200; i++) {
-    HAL_Delay(10);
+{
+  uint32_t t0 = HAL_GetTick();
+  int n = 0;
+  static uint16_t v[800];
+  static uint16_t t[800];
+  while (HAL_GetTick() - t0 < 6000) {
+    if (HAL_GetTick() - t0 >= 2000) TIM3->CCR1 = args.VALVE_DUTY;
+    if (HAL_GetTick() - t0 >= 4000) TIM1->CCR3 = args.PUMP_DRAIN_DUTY;
+    if (n < 800) { t[n] = HAL_GetTick() - t0; v[n++] = read_adc(); }
     IWDG->KR = IWDG_KEY_RELOAD;
+    HAL_Delay(5);
   }
-  TIM1->CCR3 = args.PUMP_DRAIN_DUTY;
-  TIM3->CCR1 = args.VALVE_DUTY;
+  TIM1->CCR3 = TIM3->CCR1 = 0;
+  for (int i = 0; i < n; i++)
+    printf("[%4u]%4u%c", (unsigned)t[i], (unsigned)v[i], i % 8 == 7 || i == n - 1 ? '\n' : ' ');
+}
+}
   while (1) { }
-*/
+
   if (args.HAS_PUMPS)
     drain(args.DRAIN_LOW_LIMIT);
   else
     TIM3->CCR1 = 0;
-  while (0) { }
 
   while (0) {
     ACT_ON();
