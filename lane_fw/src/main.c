@@ -711,12 +711,14 @@ void SPI1_IRQHandler() { while (1) { } }
 #pragma GCC optimize("O3")
 void USART1_IRQHandler()
 {
+  (void)USART1->SR;   // Clear ORE
   uint8_t x = USART1->DR;
   upstream_rx_process_byte(x);
 }
 
 void USART2_IRQHandler()
 {
+  (void)USART2->SR;   // Clear ORE
   uint8_t x = USART2->DR;
   downstream_rx_process_byte(x);
 }
