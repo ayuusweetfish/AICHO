@@ -247,7 +247,6 @@ int main()
       HAL_ADC_Start(&adc1);
       HAL_ADC_PollForConversion(&adc1, HAL_MAX_DELAY);
       uint32_t adc_value = HAL_ADC_GetValue(&adc1);
-      // if (i % 2 == 1) printf("%4d ", (unsigned)adc_value);
       v[i] = adc_value;
       HAL_ADC_Stop(&adc1);
     }
@@ -257,30 +256,12 @@ int main()
       return a < b ? -1 : a == b ? 0 : 1;
     }
     qsort(v, sizeof(v) / sizeof(uint32_t), sizeof(uint32_t), uint32_cmp);
-    // for (int i = 0; i < 16; i++)
-    //   if (i % 2 == 0) printf("%4d ", (unsigned)v[i]);
     uint32_t sum = 0;
     for (int i = 48; i < 80; i++) sum += v[i];
     // Reading = round(sum / 32 * Vcc / 4096)
     // Vcc = 1.2 V / (vrefint_value / 4096)
     // Reading = round(sum / 32 * 1.2 V / vrefint_value)
     return ((sum * 375 + vrefint_value / 2) / vrefint_value); // Unit: 0.1 mV
-  }
-
-  // Test ADC sampling speed
-if (0) {
-  for (int i = 0; i < 10; i++) {
-    HAL_Delay(2);
-    uint32_t t = HAL_GetTick();
-    int n = 0;
-    while (HAL_GetTick() - t < 1000) { read_adc(); n++; }
-    printf("ADC %d samples/s\n", n);
-  }
-}
-
-  while (0) {
-    printf("%u\n", (unsigned)read_adc());
-    HAL_Delay(1000);
   }
 
   // ============ RS-485 driver enable signal ============ //
@@ -356,8 +337,6 @@ if (0) {
 }
 
   // ============ Watchdog ============ //
-if (1)
-{
   __HAL_RCC_LSI_ENABLE();
   while (!(RCC->CSR & RCC_CSR_LSIRDY)) { }
 
@@ -366,24 +345,15 @@ if (1)
     .Instance = IWDG,
     .Init = (IWDG_InitTypeDef){
       .Prescaler = IWDG_PRESCALER_32, // 1 kHz
-      .Reload = 200,
+      .Reload = 100,
     },
   });
-}
 
   ACT_ON();
+
+  // Open the valve initially while waiting for the initialization signal
   uint32_t t_valve_start = HAL_GetTick();
   TIM3->CCR1 = 200;
-
-  lane_index = 3;
-  args.PUMP_INFLATE_DUTY = 150;
-  args.PUMP_DRAIN_DUTY = 200;
-  args.VALVE_DUTY = 160;
-  args.PRESSURE_LIMIT = 17000;
-  args.PRESSURE_BAIL = 17800;
-  args.INFLATE_TIME_LIMIT = 2000;
-  args.DRAIN_RATE = 2000;
-  args.HAS_PUMPS = true;
 
   while (lane_index == -1) {
     IWDG->KR = IWDG_KEY_RELOAD;
@@ -634,7 +604,7 @@ re_switch:
     op_pending = 0;
     __enable_irq();
 
-    #define TEST_OPS 1
+    #define TEST_OPS 0
     if (TEST_OPS) {
       static int tt = 0;
       if ((tt += 10) == 8000) tt = 0;
