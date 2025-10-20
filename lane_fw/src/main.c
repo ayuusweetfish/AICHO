@@ -385,16 +385,6 @@ int main()
     TIM3->CCR1 = 0;
   }
 
-  while (0) {
-    ACT_ON();
-    for (int i = 0; i < 256; i++) {
-      uint16_t l = i * 16;
-      downstream_tx((uint8_t []){0x01, l >> 8, l & 0xff, 0x00, 0x00}, 5);
-      delay_us(10000);
-      IWDG->KR = IWDG_KEY_RELOAD;
-    }
-  }
-
   enum {
     STATE_IDLE,
     STATE_INFLATE,
@@ -553,8 +543,8 @@ re_switch:
       progress = eased_phase % 8192;
 
       inflate_duty = 0;
-      drain_duty = (state_time > DRAIN_STABLIZE_WAIT
-          && state_time <= DRAIN_STABLIZE_WAIT + drain_time ?
+      drain_duty = (state_time >= DRAIN_STABLIZE_WAIT
+          && state_time < DRAIN_STABLIZE_WAIT + drain_time ?
         args.PUMP_DRAIN_DUTY : 0);
       valve_act = true;
     } break;
@@ -574,7 +564,8 @@ re_switch:
       progress = eased_phase % 8192;
 
       inflate_duty = 0;
-      drain_duty = ((state_time <= DRAIN_STABLIZE_WAIT + drain_time) ?
+      drain_duty = (state_time >= DRAIN_STABLIZE_WAIT &&
+          state_time < DRAIN_STABLIZE_WAIT + drain_time ?
         args.PUMP_DRAIN_DUTY : 0);
       valve_act = (state_time <= (DRAIN_STABLIZE_WAIT + drain_time) * 3 / 2);
     } break;
@@ -607,9 +598,12 @@ re_switch:
     #define TEST_OPS 0
     if (TEST_OPS) {
       static int tt = 0;
-      if ((tt += 10) == 8000) tt = 0;
+      if ((tt += 10) == 20000) tt = 0;
       if (tt == 2000) op |= OP_INFLATE;
       if (tt == 6000) op |= OP_DRAIN;
+      if (tt == 10000) op |= OP_INFLATE;
+      if (tt == 14000) op |= OP_FADE_OUT;
+      if (tt == 18000) op |= OP_APPEAR;
     }
   }
 
