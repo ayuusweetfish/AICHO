@@ -49,7 +49,7 @@ static struct {
   int PRESSURE_LIMIT;
   int PRESSURE_BAIL;
   int INFLATE_TIME_LIMIT;
-  int DRAIN_LOW_LIMIT;
+  int DRAIN_RATE;
 
   bool HAS_PUMPS;
 } args;
@@ -356,7 +356,7 @@ if (0) {
 }
 
   // ============ Watchdog ============ //
-if (0)
+if (1)
 {
   __HAL_RCC_LSI_ENABLE();
   while (!(RCC->CSR & RCC_CSR_LSIRDY)) { }
@@ -372,63 +372,48 @@ if (0)
 }
 
   ACT_ON();
-
   uint32_t t_valve_start = HAL_GetTick();
   TIM3->CCR1 = 200;
 
-if (0)
+  lane_index = 3;
+  args.PUMP_INFLATE_DUTY = 150;
+  args.PUMP_DRAIN_DUTY = 200;
+  args.VALVE_DUTY = 160;
+  args.PRESSURE_LIMIT = 17000;
+  args.PRESSURE_BAIL = 17800;
+  args.INFLATE_TIME_LIMIT = 2000;
+  args.DRAIN_RATE = 2000;
+  args.HAS_PUMPS = true;
+
   while (lane_index == -1) {
     IWDG->KR = IWDG_KEY_RELOAD;
     if (HAL_GetTick() - t_valve_start >= 5000) TIM3->CCR1 = 0;
     __WFI();
   }
+  TIM3->CCR1 = 0;
 
   // Clear lights
   downstream_tx((uint8_t []){0x01 + lane_index, 0x00, 0x00, 0x00, 0x00}, 5);
 
-  void drain(unsigned reading) {
-    uint32_t t0 = HAL_GetTick();
+  if (args.HAS_PUMPS) {
+    // Drain
     TIM1->CCR4 = 0;
     TIM3->CCR1 = args.VALVE_DUTY;
-    delay_us(100);
-    TIM1->CCR3 = args.PUMP_DRAIN_DUTY;
-    uint32_t t[64], n = 0;
-    while (read_adc() > reading && HAL_GetTick() - t0 < 5000)
+    for (int i = 0; i < 10; i++) {
+      delay_us(10000);
       IWDG->KR = IWDG_KEY_RELOAD;
+    }
+    uint32_t time = read_adc() * 1000 / args.DRAIN_RATE;
+    uint32_t t0 = HAL_GetTick();
+    TIM1->CCR3 = args.PUMP_DRAIN_DUTY;
+    while (HAL_GetTick() - t0 < time) {
+      __WFI();
+      IWDG->KR = IWDG_KEY_RELOAD;
+    }
     TIM1->CCR3 = TIM3->CCR1 = 0;
-  }
-
-if (0) {
-  TIM1->CCR4 = 100;
-  TIM3->CCR1 = 0;
-  for (int i = 0; i < 100; i++) {
-    HAL_Delay(10);
-    IWDG->KR = IWDG_KEY_RELOAD;
-  }
-  TIM1->CCR4 = 0;
-{
-  uint32_t t0 = HAL_GetTick();
-  int n = 0;
-  static uint16_t v[800];
-  static uint16_t t[800];
-  while (HAL_GetTick() - t0 < 6000) {
-    if (HAL_GetTick() - t0 >= 2000) TIM3->CCR1 = args.VALVE_DUTY;
-    if (HAL_GetTick() - t0 >= 4000) TIM1->CCR3 = args.PUMP_DRAIN_DUTY;
-    if (n < 800) { t[n] = HAL_GetTick() - t0; v[n++] = read_adc(); }
-    IWDG->KR = IWDG_KEY_RELOAD;
-    HAL_Delay(5);
-  }
-  TIM1->CCR3 = TIM3->CCR1 = 0;
-  for (int i = 0; i < n; i++)
-    printf("[%4u]%4u%c", (unsigned)t[i], (unsigned)v[i], i % 8 == 7 || i == n - 1 ? '\n' : ' ');
-}
-}
-  while (1) { }
-
-  if (args.HAS_PUMPS)
-    drain(args.DRAIN_LOW_LIMIT);
-  else
+  } else {
     TIM3->CCR1 = 0;
+  }
 
   while (0) {
     ACT_ON();
@@ -469,10 +454,11 @@ if (0) {
   int breath_rate = 3000; // Will be overwritten later; see STATE_IDLE
   int projected_phase = 0, eased_phase = 0;
 
+  static const int DRAIN_STABLIZE_WAIT = 100;
+
   uint32_t tick = HAL_GetTick();
   while (1) {
     uint32_t pressure = args.HAS_PUMPS ? read_adc() : 0;
-    printf("%u\n", (unsigned)pressure);
 
     if (args.HAS_PUMPS && pressure >= args.PRESSURE_BAIL) {
       // Dangerous level. Open valve and wait for 5 seconds
@@ -582,11 +568,9 @@ re_switch:
       }
       if (try_take_op(OP_FADE_OUT)) reset_state(STATE_FADE_OUT);
 
-      static bool stopped = false;
-      if (state_time == 0) stopped = false;
-
-      if (!stopped && (state_time >= 2000 || pressure < 1000))
-        stopped = true;
+      static uint32_t drain_time = 0;
+      if (state_time == DRAIN_STABLIZE_WAIT)
+        drain_time = pressure * 1000 / args.DRAIN_RATE;
 
       intensity = state_start_intensity - state_time * 3;
       if (intensity < 512) {
@@ -599,7 +583,9 @@ re_switch:
       progress = eased_phase % 8192;
 
       inflate_duty = 0;
-      drain_duty = (!stopped ? args.PUMP_DRAIN_DUTY : 0);
+      drain_duty = (state_time > DRAIN_STABLIZE_WAIT
+          && state_time <= DRAIN_STABLIZE_WAIT + drain_time ?
+        args.PUMP_DRAIN_DUTY : 0);
       valve_act = true;
     } break;
 
@@ -608,19 +594,19 @@ re_switch:
       if (op & OP_INFLATE) reset_state(STATE_IDLE);
         // Fallthrough; initialization will be handled by STATE_IDLE
 
+      static uint32_t drain_time = 0;
+      if (state_time == DRAIN_STABLIZE_WAIT)
+        drain_time = pressure * 1000 / args.DRAIN_RATE;
+
       intensity = state_start_intensity - state_time * 3;
       if (intensity < 0) intensity = 0;
       eased_phase = (eased_phase * 63 + projected_phase * 1) / 64;
       progress = eased_phase % 8192;
 
-      static int min_pressure = 0;
-      if (state_time == 0) min_pressure = pressure;
-      else if (pressure < min_pressure) min_pressure = pressure;
-
       inflate_duty = 0;
-      drain_duty =
-        (min_pressure >= args.DRAIN_LOW_LIMIT * 2 ? args.PUMP_DRAIN_DUTY : 0);
-      valve_act = (min_pressure >= args.DRAIN_LOW_LIMIT);
+      drain_duty = ((state_time <= DRAIN_STABLIZE_WAIT + drain_time) ?
+        args.PUMP_DRAIN_DUTY : 0);
+      valve_act = (state_time <= (DRAIN_STABLIZE_WAIT + drain_time) * 3 / 2);
     } break;
     }
 
@@ -647,6 +633,14 @@ re_switch:
     op = op_pending;
     op_pending = 0;
     __enable_irq();
+
+    #define TEST_OPS 1
+    if (TEST_OPS) {
+      static int tt = 0;
+      if ((tt += 10) == 8000) tt = 0;
+      if (tt == 2000) op |= OP_INFLATE;
+      if (tt == 6000) op |= OP_DRAIN;
+    }
   }
 
   while (1) {
@@ -706,7 +700,7 @@ static inline void upstream_rx_process_packet(uint8_t *packet, uint8_t n)
     args.PRESSURE_LIMIT = ((int)packet[4] << 8) | packet[5];
     args.PRESSURE_BAIL = ((int)packet[6] << 8) | packet[7];
     args.INFLATE_TIME_LIMIT = ((int)packet[8] << 8) | packet[9];
-    args.DRAIN_LOW_LIMIT = ((int)packet[10] << 8) | packet[11];
+    args.DRAIN_RATE = ((int)packet[10] << 8) | packet[11];
     args.HAS_PUMPS = (packet[1] != 0);
   }
   if (n >= 1) {
