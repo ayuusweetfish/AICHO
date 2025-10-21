@@ -32,9 +32,9 @@ static const args_t args[4] = {
     .PUMP_INFLATE_DUTY = 60,
     .PUMP_DRAIN_DUTY = 20,
     .VALVE_DUTY = 160,
-    .PRESSURE_LIMIT = 11500,
-    .PRESSURE_BAIL = 12000,
-    .INFLATE_TIME_LIMIT = 1800,
+    .PRESSURE_LIMIT = 11200,
+    .PRESSURE_BAIL = 11700,
+    .INFLATE_TIME_LIMIT = 1500,
     .DRAIN_RATE = 2000,
   },
   {
@@ -59,10 +59,10 @@ static const args_t args[4] = {
     .PUMP_INFLATE_DUTY = 150,
     .PUMP_DRAIN_DUTY = 200,
     .VALVE_DUTY = 160,
-    .PRESSURE_LIMIT = 17000,
-    .PRESSURE_BAIL = 17800,
+    .PRESSURE_LIMIT = 16200,
+    .PRESSURE_BAIL = 17000,
     .INFLATE_TIME_LIMIT = 2000,
-    .DRAIN_RATE = 2000,
+    .DRAIN_RATE = 1500,
   },
 };
 
