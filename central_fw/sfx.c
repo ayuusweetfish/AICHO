@@ -1,5 +1,6 @@
 #include "miniaudio.h"
 
+#include <math.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -43,8 +44,8 @@ static void output_cb(ma_device* dev, void *_output, const void *_input, ma_uint
       n = sounds[index].n_frames - ptr;
     const int16_t *buf = sounds[index].buf;
     for (int i = 0; i < n; i++) {
-      output[i * 2 + 0] = sat_add(output[i * 2 + 0], buf[ptr + i * 2 + 0]);
-      output[i * 2 + 1] = sat_add(output[i * 2 + 1], buf[ptr + i * 2 + 1]);
+      output[i * 2 + 0] = sat_add(output[i * 2 + 0], buf[(ptr + i) * 2 + 0]);
+      output[i * 2 + 1] = sat_add(output[i * 2 + 1], buf[(ptr + i) * 2 + 1]);
     }
     if ((ch[c].ptr += n) == sounds[index].n_frames) {
       ch[c].index = -1;
@@ -110,7 +111,7 @@ void sfx_load(const char *path)
   printf("Loading sound %s (%d)\n", path, n_sounds);
 
   ma_decoder dec;
-  ma_decoder_config dec_cfg = ma_decoder_config_init(ma_format_s16, 1, 48000);
+  ma_decoder_config dec_cfg = ma_decoder_config_init(ma_format_s16, 2, 48000);
   if (ma_decoder_init_file(path, &dec_cfg, &dec) != MA_SUCCESS) {
     fprintf(stderr, "Cannot decode file %s\n", path);
     exit(1);
@@ -132,6 +133,17 @@ void sfx_load(const char *path)
   }
 
   printf("- Length: %u frames\n", (unsigned)n_frames);
+
+  // Post-processing: gain & fade-out
+  for (int i = 0; i < n_frames; i++) {
+    float gain = 0.25;
+    if (n_frames - i < 192000) {
+      float x = (n_frames - i) / 192000.f;
+      gain *= x * expf(3 * x) / expf(3);
+    }
+    buf[i * 2 + 0] = (int16_t)roundf(buf[i * 2 + 0] * gain);
+    buf[i * 2 + 1] = (int16_t)roundf(buf[i * 2 + 1] * gain);
+  }
 
   // No need to lock here...
   sounds[n_sounds] = (struct sound_t){
